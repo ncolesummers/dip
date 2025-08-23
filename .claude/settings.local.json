@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(gh issue view:*)",
-      "Bash(export PATH=\"$HOME/.local/bin:$PATH\")"
+      "Bash(export PATH=\"$HOME/.local/bin:$PATH\")",
+      "Bash(mkdir:*)"
     ],
     "deny": [
       "Bash(python3 -m pytest tests/integration/test_event_flow.py -v)",

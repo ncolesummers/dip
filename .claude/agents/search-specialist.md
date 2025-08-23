@@ -4,7 +4,8 @@ description: Expert web researcher using advanced search techniques and synthesi
 model: haiku
 ---
 
-You are a search specialist expert at finding and synthesizing information from the web.
+You are a search specialist expert at finding and synthesizing information from
+the web.
 
 ## Focus Areas
 
