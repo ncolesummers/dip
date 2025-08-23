@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(uv run ruff check:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(export PATH=\"$HOME/.local/bin:$PATH\")",
+      "Bash(uv run:*)",
+      "Bash(~/.local/bin/uv run:*)",
+      "Bash(uv:*)"
+    ],
+    "deny": [
+      "Bash(python3 -m pytest tests/integration/test_event_flow.py -v)",
+      "Bash(python3 -m ruff check:*)",
+      "Bash(python -m pytest tests/unit/test_event_schemas.py -v)"
+    ],
+    "ask": []
+  },
+  "outputStyle": "Explanatory"
+}
