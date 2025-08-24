@@ -16,6 +16,7 @@ The Deno Intelligence Platform requires comprehensive observability to ensure re
 - **Offers a powerful query language** for complex analysis
 
 Our microservices architecture presents specific challenges:
+
 - Multiple services generating metrics independently
 - Need for both business metrics (events processed) and technical metrics (latency, errors)
 - Requirement for SLI/SLO tracking as defined in our monitoring strategy
@@ -27,6 +28,7 @@ Our microservices architecture presents specific challenges:
 We will use Prometheus as our primary metrics collection and storage system.
 
 Specifically, we will:
+
 1. **Implement Prometheus exposition format** in all services using the `/metrics` endpoint
 2. **Deploy Prometheus server** to scrape metrics from all services
 3. **Use Pushgateway** for batch jobs and short-lived processes
@@ -35,6 +37,7 @@ Specifically, we will:
 6. **Implement metric types** appropriate for each use case (counters, gauges, histograms, summaries)
 
 All services will expose metrics including:
+
 - RED metrics (Rate, Errors, Duration)
 - USE metrics (Utilization, Saturation, Errors) where applicable
 - Business-specific metrics (events processed, classification accuracy, etc.)
@@ -74,12 +77,14 @@ All services will expose metrics including:
 The emerging standard for observability data collection.
 
 **Pros:**
+
 - Vendor-neutral standard
 - Unified approach for traces, metrics, and logs
 - Growing ecosystem support
 - Automatic instrumentation capabilities
 
 **Cons:**
+
 - Less mature than Prometheus
 - Requires separate backend for storage
 - More complex setup
@@ -92,12 +97,14 @@ The emerging standard for observability data collection.
 A simple, text-based protocol for metrics.
 
 **Pros:**
+
 - Very simple protocol
 - Wide language support
 - Low overhead
 - Push-based model
 
 **Cons:**
+
 - Limited metric types
 - No labels/dimensions
 - Requires aggregation server
@@ -110,12 +117,14 @@ A simple, text-based protocol for metrics.
 A commercial SaaS monitoring platform.
 
 **Pros:**
+
 - Fully managed service
 - Excellent UI and alerting
 - Integrated APM and logging
 - No operational overhead
 
 **Cons:**
+
 - Significant cost at scale
 - Vendor lock-in
 - Data leaves our infrastructure
@@ -128,12 +137,14 @@ A commercial SaaS monitoring platform.
 A time-series database with monitoring capabilities.
 
 **Pros:**
+
 - Purpose-built for time-series data
 - SQL-like query language
 - Good performance
 - Supports both push and pull
 
 **Cons:**
+
 - Less ecosystem support
 - Smaller community
 - More complex setup than Prometheus
@@ -151,26 +162,26 @@ Each service exposes metrics using our base service implementation:
 // In shared/services/base.ts
 export abstract class BaseService {
   private metricsRegistry: MetricsRegistry;
-  
+
   protected setupMetrics() {
     // Request duration histogram
     this.requestDuration = this.metricsRegistry.histogram(
-      'service_request_duration_seconds',
-      'Request duration in seconds',
-      ['method', 'status']
+      "service_request_duration_seconds",
+      "Request duration in seconds",
+      ["method", "status"],
     );
-    
+
     // Total requests counter
     this.requestTotal = this.metricsRegistry.counter(
-      'service_requests_total',
-      'Total number of requests',
-      ['method', 'status']
+      "service_requests_total",
+      "Total number of requests",
+      ["method", "status"],
     );
-    
+
     // Active connections gauge
     this.activeConnections = this.metricsRegistry.gauge(
-      'service_active_connections',
-      'Number of active connections'
+      "service_active_connections",
+      "Number of active connections",
     );
   }
 }
@@ -185,19 +196,20 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'dip-services'
+  - job_name: "dip-services"
     static_configs:
       - targets:
-        - 'ingestion-service:8080'
-        - 'classification-service:8080'
-        - 'routing-service:8080'
-        - 'response-service:8080'
-    metrics_path: '/metrics'
+          - "ingestion-service:8080"
+          - "classification-service:8080"
+          - "routing-service:8080"
+          - "response-service:8080"
+    metrics_path: "/metrics"
 ```
 
 ### Metric Naming Conventions
 
 Following Prometheus best practices:
+
 - Use snake_case for metric names
 - Include unit in the name (e.g., `_seconds`, `_bytes`)
 - Use standard prefixes:
@@ -210,24 +222,24 @@ Following Prometheus best practices:
 ```typescript
 // Business metrics
 const eventsProcessed = counter(
-  'dip_events_processed_total',
-  'Total number of events processed',
-  ['service', 'event_type', 'status']
+  "dip_events_processed_total",
+  "Total number of events processed",
+  ["service", "event_type", "status"],
 );
 
 // SLI metrics for SLO tracking
 const requestLatency = histogram(
-  'dip_request_duration_seconds',
-  'Request latency in seconds',
-  ['service', 'operation'],
-  [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+  "dip_request_duration_seconds",
+  "Request latency in seconds",
+  ["service", "operation"],
+  [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
 );
 
 // Error tracking
 const errorRate = counter(
-  'dip_errors_total',
-  'Total number of errors',
-  ['service', 'error_type', 'severity']
+  "dip_errors_total",
+  "Total number of errors",
+  ["service", "error_type", "severity"],
 );
 ```
 
@@ -242,10 +254,10 @@ groups:
     rules:
       - record: service:request_rate
         expr: rate(service_requests_total[5m])
-      
+
       - record: service:error_rate
         expr: rate(service_requests_total{status=~"5.."}[5m])
-      
+
       - record: service:p95_latency
         expr: histogram_quantile(0.95, rate(service_request_duration_seconds_bucket[5m]))
 ```
@@ -253,6 +265,7 @@ groups:
 ### Dashboard Integration
 
 Metrics are visualized in Grafana (see ADR-004) with pre-built dashboards for:
+
 - Service overview (RED metrics)
 - Business metrics
 - SLO compliance

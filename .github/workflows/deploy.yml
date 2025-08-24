@@ -150,16 +150,26 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     strategy:
       matrix:
-        include: ${{ fromJson(
-          needs.validate.outputs.services == 'ingestion,classifier,routing,response' && 
-          '[{"service": "ingestion"}, {"service": "classifier"}, {"service": "routing"}, {"service": "response"}]' || 
-          format('[{{"service": "{0}"}}]', needs.validate.outputs.services)
-        ) }}
+        service: [ingestion, classifier, routing, response]
     steps:
+      - name: Check if service should be deployed
+        id: check
+        run: |
+          SERVICES="${{ needs.validate.outputs.services }}"
+          SERVICE="${{ matrix.service }}"
+          
+          if [[ "$SERVICES" == *"$SERVICE"* ]] || [[ "$SERVICES" == "all" ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout code
+        if: steps.check.outputs.should_deploy == 'true'
         uses: actions/checkout@v4
 
       - name: Setup deployment environment
+        if: steps.check.outputs.should_deploy == 'true'
         run: |
           echo "Setting up deployment for ${{ matrix.service }} to ${{ github.event.inputs.environment }}..."
           
@@ -178,7 +188,7 @@ jobs:
           cat deployment-config.json
 
       - name: Log in to GitHub Container Registry
-        if: github.event.inputs.dry_run == 'false'
+        if: steps.check.outputs.should_deploy == 'true' && github.event.inputs.dry_run == 'false'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -186,6 +196,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy ${{ matrix.service }} service
+        if: steps.check.outputs.should_deploy == 'true'
         id: deploy
         run: |
           ENV="${{ github.event.inputs.environment }}"
@@ -238,7 +249,7 @@ jobs:
           fi
 
       - name: Verify deployment
-        if: github.event.inputs.dry_run == 'false'
+        if: steps.check.outputs.should_deploy == 'true' && github.event.inputs.dry_run == 'false'
         run: |
           echo "Verifying deployment of ${{ matrix.service }}..."
           
@@ -255,7 +266,7 @@ jobs:
           # done
 
       - name: Create deployment record
-        if: github.event.inputs.dry_run == 'false'
+        if: steps.check.outputs.should_deploy == 'true' && github.event.inputs.dry_run == 'false'
         uses: actions/github-script@v7
         with:
           script: |

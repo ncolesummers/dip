@@ -40,99 +40,90 @@ export {
   EventBuilders,
   EventSchemaRegistry,
   getEventSchema,
-  validateEventData,
   safeParseEvent,
+  validateEventData,
   VersionedEventSchemas,
   versionedSchemas,
 } from "./schemas.ts";
 
 export type {
+  Agent,
+  // Audit types
+  AuditAction,
+  AuditLogCreatedEvent,
+  ClassificationFailedEvent,
+  Customer,
+  ErrorInfo,
   // Base types
   EventMetadata as EventMetadataV2,
-  ErrorInfo,
-  ProcessingContext,
-  
-  // Ticket domain types
-  Ticket,
-  Customer,
-  TicketReceivedEvent,
-  TicketValidationResult,
-  TicketUpdatedEvent,
-  
+  // Schema version types
+  EventSchemaVersion,
   // Classification domain types
   IntentClassification,
   IntentClassifiedEvent,
-  ClassificationFailedEvent,
-  
+  KBSearchCompletedEvent,
+  KnowledgeArticle,
+  // Metrics types
+  MetricDataPoint,
+  MetricsCollectedEvent,
+  ProcessingContext,
   // Routing domain types
   Queue,
-  Agent,
-  RoutingDecision,
-  TicketRoutedEvent,
-  RoutingFailedEvent,
-  
   // Response domain types
   ResponseContent,
-  ResponseQuality,
-  ResponseGeneratedEvent,
-  ResponseSentEvent,
   ResponseFailedEvent,
-  
+  ResponseGeneratedEvent,
+  ResponseQuality,
+  ResponseSentEvent,
+  RoutingDecision,
+  RoutingFailedEvent,
   // Knowledge base types
   SearchQuery,
-  KnowledgeArticle,
   SearchResult,
-  KBSearchCompletedEvent,
-  
   // System types
   ServiceHealth,
   ServiceHealthCheckEvent,
   SystemErrorEvent,
-  
-  // Metrics types
-  MetricDataPoint,
-  MetricsCollectedEvent,
-  
-  // Audit types
-  AuditAction,
-  AuditLogCreatedEvent,
-  
-  // Schema version types
-  EventSchemaVersion,
+  // Ticket domain types
+  Ticket,
+  TicketReceivedEvent,
+  TicketRoutedEvent,
+  TicketUpdatedEvent,
+  TicketValidationResult,
 } from "./schemas.ts";
 
 // All schemas for direct access
 export {
-  EventMetadataSchema,
-  ErrorInfoSchema,
-  ProcessingContextSchema,
-  TicketSchema,
-  CustomerSchema,
-  TicketReceivedEventSchema,
-  TicketValidationResultSchema,
-  TicketUpdatedEventSchema,
-  IntentClassificationSchema,
-  IntentClassifiedEventSchema,
-  ClassificationFailedEventSchema,
-  QueueSchema,
   AgentSchema,
-  RoutingDecisionSchema,
-  TicketRoutedEventSchema,
-  RoutingFailedEventSchema,
-  ResponseContentSchema,
-  ResponseQualitySchema,
-  ResponseGeneratedEventSchema,
-  ResponseSentEventSchema,
-  ResponseFailedEventSchema,
-  SearchQuerySchema,
-  KnowledgeArticleSchema,
-  SearchResultSchema,
-  KBSearchCompletedEventSchema,
-  ServiceHealthSchema,
-  ServiceHealthCheckEventSchema,
-  SystemErrorEventSchema,
-  MetricDataPointSchema,
-  MetricsCollectedEventSchema,
   AuditActionSchema,
   AuditLogCreatedEventSchema,
+  ClassificationFailedEventSchema,
+  CustomerSchema,
+  ErrorInfoSchema,
+  EventMetadataSchema,
+  IntentClassificationSchema,
+  IntentClassifiedEventSchema,
+  KBSearchCompletedEventSchema,
+  KnowledgeArticleSchema,
+  MetricDataPointSchema,
+  MetricsCollectedEventSchema,
+  ProcessingContextSchema,
+  QueueSchema,
+  ResponseContentSchema,
+  ResponseFailedEventSchema,
+  ResponseGeneratedEventSchema,
+  ResponseQualitySchema,
+  ResponseSentEventSchema,
+  RoutingDecisionSchema,
+  RoutingFailedEventSchema,
+  SearchQuerySchema,
+  SearchResultSchema,
+  ServiceHealthCheckEventSchema,
+  ServiceHealthSchema,
+  SystemErrorEventSchema,
+  TicketReceivedEventSchema,
+  TicketRoutedEventSchema,
+  TicketSchema,
+  TicketUpdatedEventSchema,
+  TicketValidationResultSchema,
 } from "./schemas.ts";

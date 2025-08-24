@@ -17,6 +17,7 @@ With multiple microservices in our architecture (ADR-012), we face common requir
 - **Error handling**: Consistent error responses
 
 Without standardization, we risk:
+
 - Code duplication across services
 - Inconsistent implementations
 - Missing critical features
@@ -28,6 +29,7 @@ Without standardization, we risk:
 We will implement a BaseService abstract class that all services extend, providing common functionality.
 
 The BaseService will include:
+
 1. **Lifecycle management**: Start, stop, health checks
 2. **HTTP server setup**: Using Hono with standard middleware
 3. **Metrics collection**: Prometheus metrics registry
@@ -68,12 +70,14 @@ The BaseService will include:
 Provide a template service to copy.
 
 **Pros:**
+
 - Simple to understand
 - Full flexibility
 - No hidden behavior
 - Easy to customize
 
 **Cons:**
+
 - Code duplication
 - Divergence over time
 - Manual updates needed
@@ -86,12 +90,14 @@ Provide a template service to copy.
 Provide functionality as composable libraries.
 
 **Pros:**
+
 - More flexible
 - Pick and choose features
 - Explicit dependencies
 - Easier testing
 
 **Cons:**
+
 - More boilerplate
 - Easy to forget features
 - Less consistency
@@ -104,12 +110,14 @@ Provide functionality as composable libraries.
 Generate service boilerplate.
 
 **Pros:**
+
 - No runtime overhead
 - Full visibility
 - Customizable templates
 - Type-safe
 
 **Cons:**
+
 - Complex tooling
 - Regeneration issues
 - Version management
@@ -139,7 +147,7 @@ export abstract class BaseService {
   protected producer?: KafkaProducer;
   protected metrics: MetricsRegistry;
   private server?: Deno.HttpServer;
-  
+
   constructor(protected config: ServiceConfig) {
     this.app = new Hono();
     this.metrics = new MetricsRegistry();
@@ -147,7 +155,7 @@ export abstract class BaseService {
     this.setupMetrics();
     this.setupShutdown();
   }
-  
+
   private setupBaseRoutes() {
     // Health checks
     this.app.get("/health", (c) => {
@@ -155,41 +163,41 @@ export abstract class BaseService {
       const status = health.status === "healthy" ? 200 : 503;
       return c.json(health, status);
     });
-    
+
     this.app.get("/ready", (c) => {
       const ready = this.isReady();
       return c.json({ ready }, ready ? 200 : 503);
     });
-    
+
     // Metrics endpoint
     this.app.get("/metrics", async (c) => {
       const metrics = await this.metrics.getMetrics();
       return c.text(metrics);
     });
   }
-  
+
   private setupMetrics() {
     // Standard metrics
     this.metrics.registerGauge(
       "service_info",
       "Service information",
-      { name: this.config.name, version: this.config.version }
+      { name: this.config.name, version: this.config.version },
     );
-    
+
     this.metrics.registerCounter(
       "service_requests_total",
-      "Total requests"
+      "Total requests",
     );
-    
+
     this.metrics.registerHistogram(
       "service_request_duration_seconds",
-      "Request duration"
+      "Request duration",
     );
   }
-  
+
   private setupShutdown() {
     const signals = ["SIGTERM", "SIGINT"];
-    signals.forEach(signal => {
+    signals.forEach((signal) => {
       Deno.addSignalListener(signal as Deno.Signal, async () => {
         console.log(`Received ${signal}, shutting down gracefully...`);
         await this.stop();
@@ -197,43 +205,43 @@ export abstract class BaseService {
       });
     });
   }
-  
+
   async start() {
     // Initialize Kafka if configured
     if (this.config.kafkaBrokers) {
       this.producer = new KafkaProducer(this.config.kafkaBrokers);
       await this.producer.connect();
     }
-    
+
     // Start HTTP server
     this.server = Deno.serve(
       { port: this.config.port },
-      this.app.fetch
+      this.app.fetch,
     );
-    
+
     console.log(`${this.config.name} v${this.config.version} started on port ${this.config.port}`);
   }
-  
+
   async stop() {
     // Cleanup resources
     if (this.producer) {
       await this.producer.disconnect();
     }
-    
+
     if (this.server) {
       await this.server.shutdown();
     }
-    
+
     console.log(`${this.config.name} stopped`);
   }
-  
+
   protected async publishEvent(event: CloudEvent) {
     if (!this.producer) {
       throw new Error("Kafka producer not initialized");
     }
     await this.producer.send(event);
   }
-  
+
   // Abstract methods for services to implement
   protected abstract getHealth(): HealthStatus;
   protected abstract isReady(): boolean;
@@ -248,50 +256,50 @@ import { BaseService } from "@shared/services";
 
 export class IngestionService extends BaseService {
   private ready = false;
-  
+
   constructor() {
     super({
       name: "ingestion-service",
       version: "1.0.0",
       port: 8080,
-      kafkaBrokers: ["kafka:9092"]
+      kafkaBrokers: ["kafka:9092"],
     });
-    
+
     this.setupRoutes();
   }
-  
+
   private setupRoutes() {
     this.app.post("/ingest", async (c) => {
       // Service-specific logic
       const document = await c.req.json();
-      
+
       // Process document
       const processed = await this.processDocument(document);
-      
+
       // Publish event using base class method
       await this.publishEvent({
         type: "document.ingested",
         source: "/services/ingestion",
-        data: processed
+        data: processed,
       });
-      
+
       return c.json({ id: processed.id });
     });
   }
-  
+
   protected getHealth(): HealthStatus {
     return {
       status: "healthy",
       checks: {
-        kafka: this.producer?.isConnected() ?? false
-      }
+        kafka: this.producer?.isConnected() ?? false,
+      },
     };
   }
-  
+
   protected isReady(): boolean {
     return this.ready && (this.producer?.isConnected() ?? true);
   }
-  
+
   async start() {
     await super.start();
     // Service-specific initialization
@@ -315,7 +323,7 @@ class TestService extends BaseService {
   protected getHealth() {
     return { status: "healthy" };
   }
-  
+
   protected isReady() {
     return true;
   }
@@ -325,12 +333,12 @@ Deno.test("BaseService provides health endpoint", async () => {
   const service = new TestService({
     name: "test",
     version: "1.0.0",
-    port: 0
+    port: 0,
   });
-  
+
   const response = await service.app.request("/health");
   assertEquals(response.status, 200);
-  
+
   const health = await response.json();
   assertEquals(health.status, "healthy");
 });

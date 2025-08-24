@@ -17,6 +17,7 @@ The Deno Intelligence Platform involves multiple technologies and tools that nee
 - Ensuring consistent tool versions across the team
 
 These challenges lead to:
+
 - **Onboarding friction**: New developers spend hours or days setting up their environment
 - **Works on my machine**: Inconsistent environments cause debugging difficulties
 - **Version drift**: Different developers using different tool versions
@@ -30,6 +31,7 @@ We need a solution that provides instant, consistent, and reproducible developme
 We will use Visual Studio Code DevContainers (Development Containers) to standardize our development environment.
 
 Implementation strategy:
+
 1. **Create a DevContainer configuration** that includes all required tools and dependencies
 2. **Pre-install VS Code extensions** needed for Deno and our tech stack
 3. **Configure automatic port forwarding** for services
@@ -38,6 +40,7 @@ Implementation strategy:
 6. **Provide environment templates** for different development scenarios
 
 The DevContainer will include:
+
 - Deno runtime with exact version
 - Docker-in-Docker for service orchestration
 - Pre-configured VS Code settings
@@ -79,12 +82,14 @@ The DevContainer will include:
 Traditional VM-based development environments.
 
 **Pros:**
+
 - Complete isolation
 - Works with any IDE
 - Full OS simulation
 - Good for complex scenarios
 
 **Cons:**
+
 - Heavy resource usage
 - Slow to start
 - Large disk footprint
@@ -97,12 +102,14 @@ Traditional VM-based development environments.
 Using Docker Compose without IDE integration.
 
 **Pros:**
+
 - IDE independent
 - Lightweight
 - Simple configuration
 - Standard Docker workflow
 
 **Cons:**
+
 - No IDE integration
 - Manual configuration needed
 - No standardized extensions
@@ -115,12 +122,14 @@ Using Docker Compose without IDE integration.
 Automated scripts for local environment setup.
 
 **Pros:**
+
 - Native performance
 - No containerization overhead
 - Works with any IDE
 - Direct hardware access
 
 **Cons:**
+
 - Platform-specific scripts
 - Version conflicts possible
 - Pollution of local system
@@ -133,12 +142,14 @@ Automated scripts for local environment setup.
 Fully cloud-based development (Gitpod, GitHub Codespaces without local option).
 
 **Pros:**
+
 - Zero local setup
 - Accessible anywhere
 - Scalable resources
 - Automatic updates
 
 **Cons:**
+
 - Requires internet connection
 - Potential latency issues
 - Cost for compute time
@@ -151,12 +162,14 @@ Fully cloud-based development (Gitpod, GitHub Codespaces without local option).
 Declarative development environments using Nix.
 
 **Pros:**
+
 - Truly reproducible
 - No containerization overhead
 - Precise dependency management
 - Works with any editor
 
 **Cons:**
+
 - Steep learning curve
 - Limited Windows support
 - Smaller ecosystem
@@ -175,13 +188,13 @@ Declarative development environments using Nix.
   "dockerComposeFile": "docker-compose.yml",
   "service": "devcontainer",
   "workspaceFolder": "/workspace",
-  
+
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -202,14 +215,14 @@ Declarative development environments using Nix.
       }
     }
   },
-  
+
   "forwardPorts": [
-    3000,  // Grafana
-    8080,  // Service ports
-    9090,  // Prometheus
-    9092   // Kafka
+    3000, // Grafana
+    8080, // Service ports
+    9090, // Prometheus
+    9092 // Kafka
   ],
-  
+
   "postCreateCommand": "deno cache shared/deps.ts",
   "remoteUser": "vscode"
 }
@@ -253,11 +266,11 @@ WORKDIR /workspace
 
 ```yaml
 # .devcontainer/docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   devcontainer:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     volumes:

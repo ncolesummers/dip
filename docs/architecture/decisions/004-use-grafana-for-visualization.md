@@ -16,6 +16,7 @@ With Prometheus collecting metrics from our microservices (ADR-003), we need a p
 - **Offer strong access control** for multi-tenant or team-based usage
 
 Our visualization requirements include:
+
 - Real-time monitoring dashboards for operations
 - SLO/SLI tracking dashboards for reliability
 - Business metrics dashboards for stakeholders
@@ -29,6 +30,7 @@ The solution must integrate seamlessly with our Prometheus metrics while remaini
 We will use Grafana as our primary visualization platform for metrics and observability data.
 
 Implementation approach:
+
 1. **Deploy Grafana** with Prometheus as the primary data source
 2. **Create standard dashboards** for each service following consistent patterns
 3. **Implement dashboard-as-code** using Grafana provisioning for version control
@@ -74,12 +76,14 @@ We will start with Grafana Cloud free tier for initial development and migrate t
 Prometheus includes a basic web UI for queries and graphs.
 
 **Pros:**
+
 - No additional deployment
 - Direct PromQL interface
 - Lightweight
 - Always in sync with Prometheus
 
 **Cons:**
+
 - Very basic visualizations
 - No dashboard persistence
 - No multi-query views
@@ -93,12 +97,14 @@ Prometheus includes a basic web UI for queries and graphs.
 Elastic's visualization platform, primarily for Elasticsearch.
 
 **Pros:**
+
 - Powerful for log analysis
 - Good for full-text search
 - Part of ELK stack
 - Rich visualizations
 
 **Cons:**
+
 - Primarily designed for Elasticsearch
 - Less optimal for metrics
 - Requires Elasticsearch deployment
@@ -111,6 +117,7 @@ Elastic's visualization platform, primarily for Elasticsearch.
 Commercial monitoring platform with integrated dashboards.
 
 **Pros:**
+
 - Fully managed
 - Excellent UX
 - Integrated with Datadog metrics
@@ -118,6 +125,7 @@ Commercial monitoring platform with integrated dashboards.
 - Advanced analytics features
 
 **Cons:**
+
 - Expensive at scale
 - Vendor lock-in
 - Requires sending data to cloud
@@ -130,12 +138,14 @@ Commercial monitoring platform with integrated dashboards.
 Building our own visualization layer.
 
 **Pros:**
+
 - Complete control
 - Tailored to exact needs
 - No external dependencies
 - Deep integration possible
 
 **Cons:**
+
 - Massive development effort
 - Maintenance burden
 - Reinventing the wheel
@@ -169,9 +179,9 @@ grafana:
 apiVersion: 1
 
 providers:
-  - name: 'DIP Dashboards'
+  - name: "DIP Dashboards"
     orgId: 1
-    folder: 'DIP'
+    folder: "DIP"
     type: file
     disableDeletion: true
     updateIntervalSeconds: 10
@@ -216,7 +226,7 @@ Each service gets standard dashboards:
             "legendFormat": "{{service}} - {{method}}"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
       },
       {
         "title": "Error Rate",
@@ -226,7 +236,7 @@ Each service gets standard dashboards:
             "legendFormat": "{{service}}"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
       }
     ]
   }

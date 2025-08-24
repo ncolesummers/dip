@@ -1,688 +1,644 @@
 /**
- * Example usage patterns for the event-driven microservices schemas
- * Demonstrates best practices for creating, validating, and handling events
+ * Enhanced TypedCloudEvent usage examples with observability
+ * Demonstrates real-world patterns and best practices
  */
 
-import { TypedCloudEvent } from "./base.ts";
+import { z } from "zod";
 import {
-  EventBuilders,
-  EventSources,
-  validateEventData,
-  versionedSchemas,
-  type TicketReceivedEvent,
-  type IntentClassifiedEvent,
-  type TicketRoutedEvent,
-  type ResponseGeneratedEvent,
-  EventMetadataSchema,
-  TicketReceivedEventSchema,
-} from "./schemas.ts";
+  EventDeduplicator,
+  EventLogger,
+  EventMetricsCollector,
+  initializeEventSystem,
+  type TraceContext,
+  TypedCloudEvent,
+} from "./enhanced-base.ts";
+import {
+  createTraceContext,
+  EventBatcher,
+  EventFilters,
+  EventPipeline,
+  EventReplayer,
+  EventRouter,
+  EventStream,
+} from "./utilities.ts";
+import { EventSources, EventTypes } from "./types.ts";
+import { IntentClassifiedEventSchema, TicketReceivedEventSchema } from "./schemas.ts";
 
 // ============================================================================
-// EXAMPLE 1: Creating and Publishing Events
+// EXAMPLE 1: BASIC EVENT CREATION WITH OBSERVABILITY
 // ============================================================================
 
 /**
- * Example: Ticket processing workflow
+ * Example 1: Creating events with full observability
  */
-export async function exampleTicketProcessingWorkflow() {
-  // Step 1: Create ticket received event
-  const ticketReceivedEvent = TypedCloudEvent.create({
-    source: EventSources.INGESTION_SERVICE,
-    type: "com.dip.ticket.received",
+export async function example1_BasicEventWithObservability() {
+  console.log("=== Example 1: Basic Event with Observability ===\n");
+
+  // Initialize the event system with all observability features
+  await initializeEventSystem({
+    enableDeduplication: true,
+    dedupTtlMs: 60000, // 1 minute
+    enableMetrics: true,
+    enableLogging: true,
+    logger: (message, data) => {
+      console.log(`[EVENT] ${message}:`, JSON.stringify(data, null, 2));
+    },
+  });
+
+  // Define event schema
+  const orderSchema = z.object({
+    orderId: z.string().uuid(),
+    customerId: z.string().uuid(),
+    amount: z.number().positive(),
+    items: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      price: z.number().positive(),
+      quantity: z.number().int().positive(),
+    })),
+  });
+
+  // Create event with trace context
+  const traceContext = createTraceContext();
+  const event = TypedCloudEvent.create({
+    source: EventSources.API_GATEWAY,
+    type: "order.placed",
     data: {
-      ticket: {
-        id: "550e8400-e29b-41d4-a716-446655440000",
-        subject: "Unable to login to my account",
-        description: "I keep getting an error when trying to log into my account. The error says 'Invalid credentials' but I'm sure my password is correct.",
-        status: "new",
-        priority: "medium",
-        channel: "email",
-        customer: {
-          email: "john.doe@example.com",
-          name: "John Doe",
-          company: "Acme Corp",
-          tier: "premium",
-          language: "en",
-        },
-        created_at: new Date().toISOString(),
-        tags: ["login", "authentication"],
-        category: "technical_support",
-        subcategory: "authentication",
-      },
-      source_system: "email_gateway",
-      received_at: new Date().toISOString(),
-      metadata: {
-        version: "1.0",
-        environment: "production",
-        tenantId: "123e4567-e89b-12d3-a456-426614174000",
-        priority: "medium",
-        tags: ["customer_facing"],
-      },
-    },
-    datacontenttype: "application/json",
-  }, TicketReceivedEventSchema);
-
-  console.log("Ticket received event created:", ticketReceivedEvent.toJSON());
-
-  // Step 2: Create classification event (response to ticket received)
-  const classificationEvent = ticketReceivedEvent.createResponse(
-    "com.dip.intent.classified",
-    {
-      ticket_id: "550e8400-e29b-41d4-a716-446655440000",
-      classification_result: {
-        intent: "authentication_issue",
-        confidence_score: 0.92,
-        confidence_level: "high",
-        sub_intents: [
-          { intent: "password_reset", confidence_score: 0.78 },
-          { intent: "account_locked", confidence_score: 0.65 },
-        ],
-        entities: [
-          {
-            entity: "authentication_method",
-            value: "password",
-            confidence_score: 0.89,
-          },
-          {
-            entity: "error_type",
-            value: "invalid_credentials",
-            confidence_score: 0.95,
-          },
-        ],
-        sentiment: {
-          polarity: "negative",
-          score: -0.3,
-          confidence: 0.85,
-        },
-        language_detected: "en",
-        topics: ["login", "password", "authentication"],
-      },
-      model_version: "classifier-v2.1.0",
-      processing_time_ms: 245,
-      classified_at: new Date().toISOString(),
-      classifier_id: "nlp-classifier-001",
-      training_data_version: "2024-01-15",
-      metadata: {
-        version: "1.0",
-        environment: "production",
-        tenantId: "123e4567-e89b-12d3-a456-426614174000",
-      },
-    }
-  );
-
-  console.log("Classification event created:", classificationEvent.toJSON());
-}
-
-// ============================================================================
-// EXAMPLE 2: Event Validation and Error Handling
-// ============================================================================
-
-/**
- * Example: Validating incoming events with error handling
- */
-export function exampleEventValidation() {
-  // Valid event data
-  const validEventData = {
-    ticket: {
-      id: "550e8400-e29b-41d4-a716-446655440000",
-      subject: "Test ticket",
-      description: "Test description",
-      status: "new",
-      priority: "low",
-      channel: "api",
-      customer: {
-        email: "test@example.com",
-        name: "Test User",
-        tier: "free",
-        language: "en",
-      },
-      created_at: new Date().toISOString(),
-    },
-    source_system: "api_gateway",
-    received_at: new Date().toISOString(),
-  };
-
-  // Validate the event
-  const validation = validateEventData("com.dip.ticket.received", validEventData);
-  
-  if (validation.isValid) {
-    console.log("Event is valid:", validation.validatedData);
-    
-    // Create typed event
-    const typedEvent = TypedCloudEvent.create({
-      source: EventSources.INGESTION_SERVICE,
-      type: "com.dip.ticket.received",
-      data: validation.validatedData as TicketReceivedEvent,
-    }, TicketReceivedEventSchema);
-    
-    return typedEvent;
-  } else {
-    console.error("Event validation failed:", validation.errors?.issues);
-    
-    // Handle validation errors gracefully
-    const errorEvent = TypedCloudEvent.create({
-      source: EventSources.INGESTION_SERVICE,
-      type: "com.dip.ticket.invalid",
-      data: {
-        ticket_id: "unknown",
-        is_valid: false,
-        validation_errors: validation.errors?.issues.map(issue => ({
-          field: issue.path.join("."),
-          message: issue.message,
-          code: issue.code,
-        })) || [],
-        validated_at: new Date().toISOString(),
-      },
-    });
-    
-    return errorEvent;
-  }
-}
-
-// ============================================================================
-// EXAMPLE 3: Event Builders Usage
-// ============================================================================
-
-/**
- * Example: Using type-safe event builders
- */
-export function exampleEventBuilders() {
-  try {
-    // Create ticket received event using builder
-    const ticketEvent = EventBuilders.ticketReceived({
-      ticket: {
-        id: "123e4567-e89b-12d3-a456-426614174001",
-        subject: "Payment processing error",
-        description: "Transaction failed with error code 500",
-        status: "new",
-        priority: "high",
-        channel: "api",
-        customer: {
-          email: "customer@business.com",
-          name: "Jane Smith",
-          company: "Business Inc",
-          tier: "enterprise",
-          language: "en",
-        },
-        created_at: new Date().toISOString(),
-        category: "billing",
-        subcategory: "payment_processing",
-        tags: ["payment", "error", "urgent"],
-      },
-      source_system: "payment_gateway",
-      received_at: new Date().toISOString(),
-      metadata: {
-        version: "1.0",
-        environment: "production",
-        tenantId: "456e7890-e89b-12d3-a456-426614174001",
-        priority: "high",
-        tags: ["revenue_impacting"],
-      },
-    });
-
-    console.log("Builder created event:", ticketEvent);
-
-    // Create system error event
-    const errorEvent = EventBuilders.systemError({
-      error: {
-        code: "DB_CONNECTION_FAILED",
-        message: "Unable to connect to database",
-        details: {
-          host: "db-primary.internal",
-          port: 5432,
-          database: "tickets",
-        },
-        retry_count: 3,
-        max_retries: 5,
-      },
-      service_name: "classifier-service",
-      error_category: "database",
-      severity: "high",
-      affected_operations: ["classify_intent", "update_classification"],
-      recovery_action: "Fallback to secondary database",
-      occurred_at: new Date().toISOString(),
-      user_impact: "moderate",
-      metadata: {
-        version: "1.0",
-        environment: "production",
-        priority: "high",
-      },
-    });
-
-    console.log("Error event created:", errorEvent);
-
-  } catch (error) {
-    console.error("Event builder validation failed:", error);
-  }
-}
-
-// ============================================================================
-// EXAMPLE 4: Event Chaining and Correlation
-// ============================================================================
-
-/**
- * Example: Event chaining with correlation IDs
- */
-export function exampleEventChaining() {
-  // Original ticket event
-  const originalTicket = TypedCloudEvent.create({
-    source: EventSources.INGESTION_SERVICE,
-    type: "com.dip.ticket.received",
-    data: {
-      ticket: {
-        id: "789e0123-e89b-12d3-a456-426614174002",
-        subject: "Feature request",
-        description: "Please add dark mode to the application",
-        status: "new",
-        priority: "low",
-        channel: "web_form",
-        customer: {
-          email: "user@example.org",
-          name: "Alex Johnson",
-          tier: "basic",
-          language: "en",
-        },
-        created_at: new Date().toISOString(),
-        category: "feature_request",
-      },
-      source_system: "web_portal",
-      received_at: new Date().toISOString(),
-    },
-  }, TicketReceivedEventSchema);
-
-  // Set correlation ID
-  originalTicket.setCorrelationId("correlation-789");
-
-  // Create chained classification event
-  const classifiedEvent = originalTicket.createResponse(
-    "com.dip.intent.classified",
-    {
-      ticket_id: "789e0123-e89b-12d3-a456-426614174002",
-      classification_result: {
-        intent: "feature_request",
-        confidence_score: 0.96,
-        confidence_level: "very_high",
-        topics: ["ui", "user_experience", "dark_mode"],
-      },
-      model_version: "classifier-v2.1.0",
-      processing_time_ms: 180,
-      classified_at: new Date().toISOString(),
-      classifier_id: "nlp-classifier-002",
-    }
-  );
-
-  // Create routing event from classification
-  const routedEvent = classifiedEvent.createResponse(
-    "com.dip.routing.routed",
-    {
-      ticket_id: "789e0123-e89b-12d3-a456-426614174002",
-      queue: {
-        id: "queue-product-team",
-        name: "Product Team",
-        description: "Product feature requests and enhancements",
-        capacity: 50,
-        current_load: 12,
-        priority_weight: 30,
-        skills_required: ["product_management", "ui_ux"],
-      },
-      routing_decision: {
-        strategy: "skill_based",
-        reason: "Feature request requires product management expertise",
-        confidence_score: 0.88,
-        factors_considered: ["intent_type", "required_skills", "queue_capacity"],
-        processing_time_ms: 85,
-      },
-      routed_at: new Date().toISOString(),
-      estimated_wait_time_minutes: 240,
-    }
-  );
-
-  console.log("Event chain correlation IDs:");
-  console.log("Original:", originalTicket.getCorrelationId());
-  console.log("Classified:", classifiedEvent.getCorrelationId());
-  console.log("Routed:", routedEvent.getCorrelationId());
-
-  console.log("Event chain causation:");
-  console.log("Classified caused by:", classifiedEvent.getCausationId());
-  console.log("Routed caused by:", routedEvent.getCausationId());
-}
-
-// ============================================================================
-// EXAMPLE 5: Event Versioning and Migration
-// ============================================================================
-
-/**
- * Example: Event schema versioning
- */
-export function exampleEventVersioning() {
-  // Register a new version of the ticket schema
-  const TicketReceivedEventV2Schema = TicketReceivedEventSchema.extend({
-    processing_hints: z.object({
-      urgent: z.boolean().default(false),
-      vip_customer: z.boolean().default(false),
-      auto_respond: z.boolean().default(true),
-    }).optional(),
-    compliance_flags: z.array(z.string()).optional(),
-  });
-
-  // Register the new version
-  versionedSchemas.registerVersion("com.dip.ticket.received", "2.0", {
-    version: "2.0",
-    schema: TicketReceivedEventV2Schema,
-    migration: (oldData: unknown) => {
-      // Migration from v1.0 to v2.0
-      const v1Data = oldData as any;
-      return {
-        ...v1Data,
-        processing_hints: {
-          urgent: v1Data.ticket?.priority === "urgent" || v1Data.ticket?.priority === "critical",
-          vip_customer: v1Data.ticket?.customer?.tier === "enterprise",
-          auto_respond: true,
-        },
-        compliance_flags: v1Data.ticket?.customer?.tier === "enterprise" ? ["gdpr", "sox"] : [],
-      };
-    },
-  });
-
-  // Example of handling versioned events
-  const v1EventData = {
-    ticket: {
-      id: "version-test-123",
-      subject: "Version test",
-      description: "Testing versioning",
-      status: "new",
-      priority: "urgent",
-      channel: "email",
-      customer: {
-        email: "enterprise@bigcorp.com",
-        name: "Enterprise User",
-        company: "BigCorp",
-        tier: "enterprise",
-        language: "en",
-      },
-      created_at: new Date().toISOString(),
-    },
-    source_system: "test_system",
-    received_at: new Date().toISOString(),
-  };
-
-  // Migrate to latest version
-  const migratedData = versionedSchemas.migrateToLatest(
-    "com.dip.ticket.received",
-    v1EventData,
-    "1.0"
-  );
-
-  console.log("Migrated event data:", migratedData);
-}
-
-// ============================================================================
-// EXAMPLE 6: Complex Event Processing
-// ============================================================================
-
-/**
- * Example: Processing complex multi-service workflow
- */
-export async function exampleComplexWorkflow() {
-  // Simulate a complex customer support workflow
-  
-  // 1. High priority ticket received
-  const urgentTicket = EventBuilders.ticketReceived({
-    ticket: {
-      id: "urgent-456",
-      subject: "Service completely down - losing revenue!",
-      description: "Our entire service is offline and we're losing thousands per minute. This is a critical issue!",
-      status: "new",
-      priority: "critical",
-      channel: "phone",
-      customer: {
-        email: "cto@megacorp.com",
-        name: "Sarah Chen",
-        company: "MegaCorp Industries",
-        tier: "enterprise",
-        language: "en",
-        phone: "+1-555-0199",
-      },
-      created_at: new Date().toISOString(),
-      category: "service_outage",
-      subcategory: "complete_outage",
-      tags: ["outage", "critical", "revenue_impact"],
-      sla_breach_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes
-    },
-    source_system: "phone_system",
-    received_at: new Date().toISOString(),
-    metadata: {
-      version: "1.0",
-      environment: "production",
-      tenantId: "enterprise-001",
-      priority: "critical",
-      tags: ["revenue_critical", "escalation_required"],
-    },
-  });
-
-  // 2. Immediate classification (bypassing normal ML due to keywords)
-  const emergencyClassification = EventBuilders.intentClassified({
-    ticket_id: "urgent-456",
-    classification_result: {
-      intent: "service_outage",
-      confidence_score: 0.99,
-      confidence_level: "very_high",
-      entities: [
-        { entity: "outage_type", value: "complete", confidence_score: 0.98 },
-        { entity: "business_impact", value: "revenue_loss", confidence_score: 0.97 },
+      orderId: "550e8400-e29b-41d4-a716-446655440000",
+      customerId: "550e8400-e29b-41d4-a716-446655440001",
+      amount: 99.99,
+      items: [
+        { id: "item-1", name: "Widget", price: 49.99, quantity: 1 },
+        { id: "item-2", name: "Gadget", price: 50.00, quantity: 1 },
       ],
-      sentiment: {
-        polarity: "negative",
-        score: -0.8,
-        confidence: 0.95,
-      },
-      topics: ["outage", "downtime", "service_interruption"],
     },
-    model_version: "emergency-classifier-v1.0",
-    processing_time_ms: 50,
-    classified_at: new Date().toISOString(),
-    classifier_id: "emergency-classifier",
-    fallback_used: true, // Used rule-based classification for speed
-    metadata: {
-      version: "1.0",
-      environment: "production",
-      priority: "critical",
-      tags: ["emergency_path"],
-    },
-  });
+    subject: "orders/550e8400-e29b-41d4-a716-446655440000",
+  }, orderSchema);
 
-  // 3. Emergency routing to on-call engineer
-  const emergencyRouting = EventBuilders.ticketRouted({
-    ticket_id: "urgent-456",
-    agent: {
-      id: "agent-oncall-001",
-      name: "Mike Rodriguez",
-      email: "mike.r@company.com",
-      skills: ["infrastructure", "database", "networking", "incident_response"],
-      capacity: 5,
-      current_load: 1, // Taking this critical ticket
-      availability_status: "available",
-      language_codes: ["en", "es"],
-      specializations: ["outage_response", "enterprise_support"],
-    },
-    routing_decision: {
-      strategy: "manual",
-      reason: "Critical outage requires immediate on-call engineer assignment",
-      confidence_score: 1.0,
-      factors_considered: ["priority_level", "on_call_status", "expertise_match"],
-      processing_time_ms: 25,
-    },
-    routed_at: new Date().toISOString(),
-    estimated_wait_time_minutes: 0, // Immediate
-    sla_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-    escalation_path: [
-      {
-        level: 1,
-        queue_id: "engineering-leads",
-        trigger_after_minutes: 10,
-      },
-      {
-        level: 2,
-        queue_id: "executive-escalation",
-        trigger_after_minutes: 20,
-      },
-    ],
-    metadata: {
-      version: "1.0",
-      environment: "production",
-      priority: "critical",
-    },
-  });
+  // Add observability metadata
+  event.addTraceContext(traceContext);
+  event.addTag("environment", "production");
+  event.addTag("service", "order-service");
+  event.addAnnotation("processing_rules", ["fraud_check", "inventory_check"]);
 
-  // 4. Quick acknowledgment response
-  const acknowledgeResponse = EventBuilders.responseGenerated({
-    ticket_id: "urgent-456",
-    response_id: "response-urgent-ack",
-    response_type: "template_based",
-    content: {
-      subject: "URGENT: Service Outage - Immediate Response",
-      body: "Dear Sarah,\n\nWe have received your critical service outage report and have immediately assigned our on-call infrastructure engineer Mike Rodriguez to investigate. He will contact you directly within the next 5 minutes.\n\nTicket ID: urgent-456\nSeverity: Critical\nEstimated Response Time: Immediate\n\nWe understand the business impact and are treating this as our highest priority.\n\nBest regards,\nTechnical Support Team",
-      format: "plain_text",
-    },
-    channel: "email",
-    generated_by: "emergency-response-template",
-    generation_method: "rule_based_template",
-    processing_time_ms: 120,
-    quality_metrics: {
-      relevance_score: 0.95,
-      sentiment_appropriateness: 0.88,
-      completeness_score: 0.92,
-    },
-    generated_at: new Date().toISOString(),
-    requires_approval: false, // Pre-approved template for critical issues
-    metadata: {
-      version: "1.0",
-      environment: "production",
-      priority: "critical",
-    },
-  });
+  // Sign the event for security
+  const key = await crypto.subtle.generateKey(
+    { name: "HMAC", hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  await event.sign(key);
 
-  console.log("Complex workflow events created:");
-  console.log("1. Urgent ticket:", urgentTicket.type);
-  console.log("2. Emergency classification:", emergencyClassification.type);
-  console.log("3. Emergency routing:", emergencyRouting.type);
-  console.log("4. Acknowledgment response:", acknowledgeResponse.type);
+  console.log("Event created with telemetry:", event.getTelemetry());
+  console.log("Event is valid:", event.validate());
+  console.log("Event has trace context:", !!event.getTraceContext());
+
+  // Serialize for Kafka
+  const serialized = await event.serializeForKafka();
+  console.log("Serialized size:", serialized.length, "bytes");
+
+  // Verify signature
+  const isValidSignature = await event.verify(key);
+  console.log("Signature valid:", isValidSignature);
+
+  console.log("\n");
 }
 
 // ============================================================================
-// EXAMPLE 7: Event Analytics and Monitoring
+// EXAMPLE 2: EVENT ROUTING WITH OBSERVABILITY
 // ============================================================================
 
 /**
- * Example: Analytics events for business intelligence
+ * Example 2: Advanced event routing with metrics
  */
-export function exampleAnalyticsEvents() {
-  // Create comprehensive metrics event
-  const analyticsEvent = EventBuilders.metricsCollected({
-    collection_id: "metrics-hourly-001",
-    source_service: "analytics-service",
-    metrics: [
+export async function example2_EventRouting() {
+  console.log("=== Example 2: Event Routing with Metrics ===\n");
+
+  // Create metrics collector
+  const metricsCollector = new EventMetricsCollector();
+  TypedCloudEvent.addObserver(metricsCollector);
+
+  // Mock handlers that simulate processing
+  const ticketHandler = async (event: TypedCloudEvent) => {
+    console.log(`Processing ticket event: ${event.getAttribute("id")}`);
+    await new Promise((resolve) => setTimeout(resolve, 50)); // Simulate processing
+    event.addTag("processed_by", "ticket-service");
+  };
+
+  const classificationHandler = async (event: TypedCloudEvent) => {
+    console.log(`Processing classification event: ${event.getAttribute("id")}`);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    event.addTag("processed_by", "classification-service");
+  };
+
+  const auditHandler = async (event: TypedCloudEvent) => {
+    console.log(`Auditing event: ${event.getAttribute("id")}`);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    event.addTag("audited", "true");
+  };
+
+  // Create router with different routes
+  const router = new EventRouter({
+    routes: [
       {
-        name: "tickets_received",
-        value: 127,
-        unit: "count",
-        timestamp: new Date().toISOString(),
-        dimensions: {
-          channel: "email",
-          priority: "medium",
-          hour: "14",
-        },
-        tags: ["customer_support", "hourly"],
+        name: "ticket-events",
+        filter: EventFilters.byType([
+          EventTypes.TICKET_RECEIVED,
+          EventTypes.TICKET_VALIDATED,
+          EventTypes.TICKET_UPDATED,
+        ]),
+        handler: ticketHandler,
+        priority: 10,
       },
       {
-        name: "avg_classification_time",
-        value: 1.2,
-        unit: "seconds",
-        timestamp: new Date().toISOString(),
-        dimensions: {
-          model_version: "v2.1.0",
-          confidence_level: "high",
-        },
-        tags: ["performance", "ml_metrics"],
+        name: "classification-events",
+        filter: EventFilters.and(
+          EventFilters.byType([EventTypes.INTENT_CLASSIFIED]),
+          EventFilters.bySource(EventSources.CLASSIFIER_SERVICE),
+        ),
+        handler: classificationHandler,
+        priority: 8,
       },
       {
-        name: "customer_satisfaction",
-        value: 4.3,
-        unit: "rating",
-        timestamp: new Date().toISOString(),
-        dimensions: {
-          response_type: "auto_generated",
-          resolution_time: "under_1_hour",
-        },
-        tags: ["quality", "customer_experience"],
+        name: "audit-all",
+        filter: () => true, // Audit all events
+        handler: auditHandler,
+        priority: 1,
       },
     ],
-    collection_period: {
-      start_time: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-      end_time: new Date().toISOString(),
-    },
-    collection_method: "scheduled",
-    collected_at: new Date().toISOString(),
-    metadata: {
-      version: "1.0",
-      environment: "production",
-      tags: ["business_intelligence", "reporting"],
+    concurrency: 5,
+    errorHandler: (error, event) => {
+      console.error(`Routing error for ${event.getAttribute("id")}:`, error.message);
     },
   });
 
-  console.log("Analytics event:", analyticsEvent);
+  // Create test events
+  const ticketEvent = TypedCloudEvent.create({
+    source: EventSources.INGESTION_SERVICE,
+    type: EventTypes.TICKET_RECEIVED,
+    data: {
+      ticket: {
+        id: "ticket-123",
+        subject: "Need help with login",
+        description: "Cannot access my account",
+        status: "new" as const,
+        priority: "medium" as const,
+        channel: "email" as const,
+        customer: {
+          email: "user@example.com",
+          name: "John Doe",
+          tier: "basic" as const,
+        },
+        created_at: new Date().toISOString(),
+      },
+      source_system: "web-portal",
+      received_at: new Date().toISOString(),
+    },
+    subject: "tickets/ticket-123",
+  }, TicketReceivedEventSchema);
+
+  const classificationEvent = TypedCloudEvent.create({
+    source: EventSources.CLASSIFIER_SERVICE,
+    type: EventTypes.INTENT_CLASSIFIED,
+    data: {
+      ticket_id: "ticket-123",
+      classification_result: {
+        intent: "account_access",
+        confidence_score: 0.95,
+        confidence_level: "very_high" as const,
+        sentiment: {
+          polarity: "neutral" as const,
+          score: 0.1,
+          confidence: 0.8,
+        },
+      },
+      model_version: "v2.1.0",
+      processing_time_ms: 150,
+      classified_at: new Date().toISOString(),
+      classifier_id: "bert-classifier",
+    },
+    subject: "tickets/ticket-123/classification",
+  }, IntentClassifiedEventSchema);
+
+  // Route events
+  await router.route(ticketEvent);
+  await router.route(classificationEvent);
+
+  // Wait for async processing to complete
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  // Display metrics
+  console.log("Router stats:", router.getStats());
+  console.log("Event metrics:", metricsCollector.getMetrics());
+
+  console.log("\n");
 }
 
 // ============================================================================
-// EXAMPLE 8: Error Handling and Retry Patterns
+// EXAMPLE 3: EVENT BATCHING AND STREAM PROCESSING
 // ============================================================================
 
 /**
- * Example: Comprehensive error handling
+ * Example 3: Efficient batching for high-throughput scenarios
  */
-export function exampleErrorHandling() {
-  // Create a classification failure event
-  const classificationError = EventBuilders.systemError({
-    error: {
-      code: "ML_MODEL_TIMEOUT",
-      message: "Classification model request timed out after 30 seconds",
-      details: {
-        model_endpoint: "https://ml-api.internal/classify",
-        timeout_seconds: 30,
-        ticket_id: "timeout-test-123",
-        request_payload_size: 2048,
-      },
-      stack_trace: "Error: Timeout\n  at MLClient.classify\n  at ClassifierService.processTicket",
-      retry_count: 2,
-      max_retries: 3,
-      next_retry_at: new Date(Date.now() + 60000).toISOString(), // 1 minute from now
+export async function example3_BatchProcessing() {
+  console.log("=== Example 3: Batch Processing ===\n");
+
+  let batchCount = 0;
+  let totalEventsProcessed = 0;
+
+  // Create batcher for efficient processing
+  const batcher = new EventBatcher({
+    maxSize: 5,
+    maxWaitMs: 1000,
+    handler: async (events) => {
+      batchCount++;
+      totalEventsProcessed += events.length;
+
+      console.log(`Processing batch ${batchCount} with ${events.length} events`);
+
+      // Simulate batch processing
+      const startTime = performance.now();
+
+      // Process events in batch
+      for (const event of events) {
+        // Simulate validation
+        event.validate();
+
+        // Add batch processing metadata
+        event.addTag("batch_id", `batch-${batchCount}`);
+        event.addTag("batch_size", events.length.toString());
+      }
+
+      const processingTime = performance.now() - startTime;
+      console.log(`Batch ${batchCount} processed in ${processingTime.toFixed(2)}ms`);
     },
-    service_name: "classifier-service",
-    error_category: "timeout",
-    severity: "medium",
-    affected_operations: ["ticket_classification"],
-    recovery_action: "Retry with fallback rule-based classifier",
-    occurred_at: new Date().toISOString(),
-    user_impact: "minimal", // Fallback exists
-    metadata: {
-      version: "1.0",
-      environment: "production",
-      priority: "medium",
-      tags: ["ml_service", "timeout", "retry_required"],
+    errorHandler: (error, events) => {
+      console.error(`Batch processing failed for ${events.length} events:`, error);
     },
   });
 
-  console.log("Error event with retry information:", classificationError);
+  // Generate events to batch
+  console.log("Generating events for batching...");
+  for (let i = 0; i < 12; i++) {
+    const event = TypedCloudEvent.create({
+      source: "batch.producer",
+      type: "data.point",
+      data: {
+        value: Math.random() * 100,
+        timestamp: Date.now(),
+        index: i,
+      },
+      subject: `data-point-${i}`,
+    });
+
+    batcher.add(event);
+
+    // Add small delay to demonstrate timing
+    if (i === 7) {
+      console.log("Pausing to demonstrate time-based batching...");
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+
+  // Wait for final batch
+  await batcher.flush();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  console.log(`Processed ${totalEventsProcessed} events in ${batchCount} batches`);
+  console.log("Batch stats:", batcher.getStats());
+
+  batcher.cleanup();
+  console.log("\n");
 }
 
-// Export all examples for easy testing
-export const examples = {
-  ticketProcessingWorkflow: exampleTicketProcessingWorkflow,
-  eventValidation: exampleEventValidation,
-  eventBuilders: exampleEventBuilders,
-  eventChaining: exampleEventChaining,
-  eventVersioning: exampleEventVersioning,
-  complexWorkflow: exampleComplexWorkflow,
-  analyticsEvents: exampleAnalyticsEvents,
-  errorHandling: exampleErrorHandling,
-};
+// ============================================================================
+// EXAMPLE 4: EVENT REPLAY FOR TESTING
+// ============================================================================
+
+/**
+ * Example 4: Event replay for testing and debugging
+ */
+export async function example4_EventReplay() {
+  console.log("=== Example 4: Event Replay ===\n");
+
+  // Create historical events with different timestamps
+  const historicalEvents = [
+    TypedCloudEvent.create({
+      source: "user.service",
+      type: "user.registered",
+      data: { userId: "user-1", email: "user1@example.com" },
+      time: new Date(Date.now() - 3000).toISOString(),
+    }),
+    TypedCloudEvent.create({
+      source: "user.service",
+      type: "user.email.verified",
+      data: { userId: "user-1" },
+      time: new Date(Date.now() - 2000).toISOString(),
+    }),
+    TypedCloudEvent.create({
+      source: "order.service",
+      type: "order.placed",
+      data: { orderId: "order-1", userId: "user-1", amount: 29.99 },
+      time: new Date(Date.now() - 1000).toISOString(),
+    }),
+  ];
+
+  const processedEvents: string[] = [];
+
+  console.log("Starting replay at 3x speed with timing preserved...");
+
+  const replayer = new EventReplayer({
+    events: historicalEvents,
+    speed: 3.0, // 3x speed
+    preserveTiming: true,
+    handler: async (event) => {
+      const eventInfo = `${event.getAttribute("type")} [${event.getAttribute("id")}]`;
+      processedEvents.push(eventInfo);
+      console.log(`Replayed: ${eventInfo} at ${new Date().toISOString()}`);
+
+      // Simulate processing
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    },
+    filter: (event) => {
+      // Only replay user-related events
+      return event.getAttribute("source").includes("user") ||
+        event.getData().hasOwnProperty("userId");
+    },
+    onComplete: () => {
+      console.log("Replay completed!");
+    },
+    onError: (error, event) => {
+      console.error(`Replay error for ${event.getAttribute("id")}:`, error);
+    },
+  });
+
+  const startTime = Date.now();
+  await replayer.start();
+
+  // Wait for completion
+  await new Promise((resolve) => {
+    const checkComplete = () => {
+      const stats = replayer.getStats();
+      if (!stats.playing) {
+        resolve(undefined);
+      } else {
+        setTimeout(checkComplete, 50);
+      }
+    };
+    checkComplete();
+  });
+
+  const replayDuration = Date.now() - startTime;
+  console.log(`Replay completed in ${replayDuration}ms`);
+  console.log("Processed events:", processedEvents);
+
+  console.log("\n");
+}
+
+// ============================================================================
+// EXAMPLE 5: EVENT PIPELINE WITH ERROR HANDLING
+// ============================================================================
+
+/**
+ * Example 5: Complex event processing pipeline
+ */
+export async function example5_EventPipeline() {
+  console.log("=== Example 5: Event Processing Pipeline ===\n");
+
+  // Create processing pipeline
+  const pipeline = new EventPipeline()
+    .addStage({
+      name: "validate",
+      process: async (event) => {
+        if (!event.validate()) {
+          throw new Error("Event validation failed");
+        }
+        event.addTag("validation", "passed");
+        return event;
+      },
+      onError: (error, event) => {
+        console.error(`Validation failed for ${event.getAttribute("id")}: ${error.message}`);
+      },
+    })
+    .addStage({
+      name: "enrich",
+      process: async (event) => {
+        // Add enrichment data
+        const data = event.getData() as any;
+        if (data?.customerId) {
+          event.addAnnotation("customer_tier", "premium"); // Mock enrichment
+        }
+        event.addTag("enriched", "true");
+
+        // Simulate API call delay
+        await new Promise((resolve) => setTimeout(resolve, 25));
+
+        return event;
+      },
+    })
+    .addStage({
+      name: "route",
+      process: async (event) => {
+        // Determine routing
+        const eventType = event.getAttribute("type");
+        let routingQueue = "default";
+
+        if (eventType.includes("order")) {
+          routingQueue = "order-processing";
+        } else if (eventType.includes("user")) {
+          routingQueue = "user-management";
+        }
+
+        event.addTag("routing_queue", routingQueue);
+        return event;
+      },
+    })
+    .addStage({
+      name: "audit",
+      process: async (event) => {
+        // Log for audit
+        const auditEntry = {
+          eventId: event.getAttribute("id"),
+          eventType: event.getAttribute("type"),
+          source: event.getAttribute("source"),
+          timestamp: new Date().toISOString(),
+        };
+
+        // Would normally send to audit service
+        console.log("Audit:", JSON.stringify(auditEntry));
+
+        event.addTag("audited", "true");
+        return event;
+      },
+    });
+
+  // Create test events (some valid, some that will fail)
+  const testEvents = [
+    TypedCloudEvent.create({
+      source: "api",
+      type: "order.created",
+      data: { orderId: "order-1", customerId: "customer-1", amount: 100 },
+    }),
+    TypedCloudEvent.create({
+      source: "api",
+      type: "user.updated",
+      data: { userId: "user-1", name: "Updated Name" },
+    }),
+    // This will fail validation (missing required fields)
+    TypedCloudEvent.create({
+      specversion: "1.0",
+      id: "bad-event",
+      source: "", // Empty source will fail
+      type: "", // Empty type will fail
+    } as any),
+  ];
+
+  console.log("Processing events through pipeline...");
+
+  const results = await pipeline.processMany(testEvents);
+
+  // Display results
+  results.forEach((result, index) => {
+    if (result) {
+      console.log(`Event ${index}: PROCESSED`);
+      const telemetry = result.getTelemetry();
+      console.log(`  Tags:`, Array.from(telemetry.tags.entries()));
+    } else {
+      console.log(`Event ${index}: FAILED/FILTERED`);
+    }
+  });
+
+  // Show pipeline metrics
+  console.log("\nPipeline metrics:");
+  const metrics = pipeline.getMetrics();
+  Object.entries(metrics).forEach(([stage, stats]) => {
+    console.log(`  ${stage}:`, stats);
+  });
+
+  console.log("\n");
+}
+
+// ============================================================================
+// EXAMPLE 6: EVENT STREAMING WITH TRANSFORMATIONS
+// ============================================================================
+
+/**
+ * Example 6: Real-time event streaming with transformations
+ */
+export async function example6_EventStreaming() {
+  console.log("=== Example 6: Event Streaming ===\n");
+
+  // Create event stream
+  const eventStream = new EventStream();
+
+  // Create transformed streams
+  const orderStream = eventStream
+    .filter((event) => event.getAttribute("type").includes("order"))
+    .map((event) => {
+      // Transform to order summary
+      const data = event.getData() as any;
+      return TypedCloudEvent.create({
+        source: "stream.transformer",
+        type: "order.summary",
+        data: {
+          orderId: data.orderId,
+          totalAmount: data.amount,
+          summary: `Order ${data.orderId} for $${data.amount}`,
+        },
+        subject: `order-summaries/${data.orderId}`,
+      });
+    });
+
+  const highValueStream = eventStream
+    .filter((event) => {
+      const data = event.getData() as any;
+      return data?.amount && data.amount > 50;
+    });
+
+  // Start consumers
+  const orderSummaries: string[] = [];
+  const highValueOrders: string[] = [];
+
+  // Consume order summaries
+  const orderConsumer = (async () => {
+    for await (const event of orderStream.take(3)) {
+      const data = event.getData() as any;
+      orderSummaries.push(data.summary);
+      console.log("Order summary:", data.summary);
+    }
+  })();
+
+  // Consume high-value orders
+  const highValueConsumer = (async () => {
+    for await (const event of highValueStream.take(2)) {
+      const data = event.getData() as any;
+      highValueOrders.push(`High-value: Order ${data.orderId} - $${data.amount}`);
+      console.log("High-value order detected:", data.orderId);
+    }
+  })();
+
+  // Produce events
+  console.log("Streaming events...");
+
+  const orders = [
+    { orderId: "order-1", customerId: "customer-1", amount: 25.99 },
+    { orderId: "order-2", customerId: "customer-2", amount: 89.99 },
+    { orderId: "order-3", customerId: "customer-3", amount: 15.50 },
+    { orderId: "order-4", customerId: "customer-1", amount: 120.00 },
+    { orderId: "order-5", customerId: "customer-4", amount: 75.25 },
+  ];
+
+  for (const orderData of orders) {
+    const event = TypedCloudEvent.create({
+      source: "order.service",
+      type: "order.placed",
+      data: orderData,
+    });
+
+    eventStream.push(event);
+    await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate real-time
+  }
+
+  // Wait for consumers to complete
+  await Promise.all([orderConsumer, highValueConsumer]);
+
+  console.log("\nOrder summaries processed:", orderSummaries.length);
+  console.log("High-value orders detected:", highValueOrders.length);
+
+  eventStream.close();
+  console.log("Stream closed");
+
+  console.log("\n");
+}
+
+// ============================================================================
+// MAIN EXAMPLE RUNNER
+// ============================================================================
+
+/**
+ * Run all examples
+ */
+export async function runAllExamples() {
+  console.log("🚀 Enhanced TypedCloudEvent Examples\n");
+  console.log("==========================================\n");
+
+  try {
+    await example1_BasicEventWithObservability();
+    await example2_EventRouting();
+    await example3_BatchProcessing();
+    await example4_EventReplay();
+    await example5_EventPipeline();
+    await example6_EventStreaming();
+
+    console.log("✅ All examples completed successfully!");
+  } catch (error) {
+    console.error("❌ Example failed:", error);
+    throw error;
+  }
+}
+
+// Run examples if this file is executed directly
+if (import.meta.main) {
+  await runAllExamples();
+}

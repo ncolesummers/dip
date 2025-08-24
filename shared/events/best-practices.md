@@ -22,7 +22,7 @@ Events should represent meaningful business events within specific domains:
 ```typescript
 // Good: Domain-specific, business meaningful
 const ticketReceivedEvent = EventBuilders.ticketReceived({
-  ticket: { /* ticket data */ },
+  ticket: {/* ticket data */},
   source_system: "email_gateway",
   received_at: new Date().toISOString(),
 });
@@ -31,7 +31,7 @@ const ticketReceivedEvent = EventBuilders.ticketReceived({
 const databaseInsertEvent = {
   table: "tickets",
   operation: "INSERT",
-  row_id: 123
+  row_id: 123,
 };
 ```
 
@@ -54,7 +54,7 @@ const ticketUpdatedEvent = EventBuilders.ticketUpdated({
 // Bad: Minimal information, requires additional lookups
 const ticketChangedEvent = {
   ticket_id: "123",
-  changed: true
+  changed: true,
 };
 ```
 
@@ -70,13 +70,13 @@ const responseGeneratedEvent = EventBuilders.responseGenerated({
   content: {
     subject: "Re: Your support request",
     body: "Thank you for contacting us...",
-    format: "plain_text"
+    format: "plain_text",
   },
   channel: "email",
   customer: {
     email: "customer@example.com",
     name: "John Doe",
-    tier: "premium"
+    tier: "premium",
   },
   // ... other fields
 });
@@ -110,10 +110,10 @@ versionedSchemas.registerVersion("com.dip.ticket.received", "2.0", {
       // Transform existing fields if needed
       metadata: {
         ...v1Data.metadata,
-        schema_version: "2.0"
-      }
+        schema_version: "2.0",
+      },
     };
-  }
+  },
 });
 ```
 
@@ -146,6 +146,7 @@ Use reverse domain notation with consistent patterns:
 ```
 
 Examples:
+
 - `com.dip.ticket.received`
 - `com.dip.intent.classified`
 - `com.dip.response.generated`
@@ -161,7 +162,7 @@ const eventData = {
   ticket_id: "123",
   created_at: "2024-01-01T00:00:00Z",
   processing_time_ms: 150,
-  customer_tier: "premium"
+  customer_tier: "premium",
 };
 
 // Bad - inconsistent casing
@@ -169,7 +170,7 @@ const badEventData = {
   ticketId: "123",
   created_at: "2024-01-01T00:00:00Z",
   processingTimeMs: 150,
-  customer_tier: "premium"
+  customer_tier: "premium",
 };
 ```
 
@@ -187,16 +188,16 @@ const errorEvent = EventBuilders.systemError({
     details: {
       endpoint: "https://ml-service/classify",
       timeout_seconds: 30,
-      request_size_bytes: 2048
+      request_size_bytes: 2048,
     },
     stack_trace: "Error: Timeout\n  at MLClient...",
     retry_count: 2,
     max_retries: 3,
-    next_retry_at: new Date(Date.now() + 60000).toISOString()
+    next_retry_at: new Date(Date.now() + 60000).toISOString(),
   },
   service_name: "classifier-service",
   error_category: "timeout",
-  severity: "medium"
+  severity: "medium",
 });
 ```
 
@@ -210,7 +211,7 @@ const retryConfig = {
   baseDelayMs: 1000,
   maxDelayMs: 30000,
   backoffMultiplier: 2,
-  jitter: true
+  jitter: true,
 };
 
 // Include retry information in events
@@ -219,8 +220,8 @@ const failedEvent = {
     retry_count: 2,
     max_retries: 3,
     next_retry_at: calculateNextRetry(retryConfig),
-    backoff_strategy: "exponential_jitter"
-  }
+    backoff_strategy: "exponential_jitter",
+  },
 };
 ```
 
@@ -236,7 +237,7 @@ const optimizedEvent = {
   ticket_id: "123",
   classification: "billing_issue",
   confidence: 0.92,
-  processing_time_ms: 45
+  processing_time_ms: 45,
 };
 
 // Bad: Includes large unnecessary data
@@ -244,7 +245,7 @@ const bloatedEvent = {
   ticket_id: "123",
   full_ticket_content: "...20KB of text...",
   raw_ml_model_output: "...50KB of vectors...",
-  complete_training_dataset: "...1MB of data..."
+  complete_training_dataset: "...1MB of data...",
 };
 ```
 
@@ -278,7 +279,7 @@ const eventWithPartitioning = TypedCloudEvent.create({
   source: EventSources.CLASSIFIER_SERVICE,
   type: "com.dip.intent.classified",
   subject: `tenant/${tenantId}/ticket/${ticketId}`, // Partition key
-  data: classificationData
+  data: classificationData,
 });
 ```
 
@@ -304,11 +305,11 @@ export function testTicketEventValidation() {
 export function testSchemaMigration() {
   const v1Data = createV1TicketData();
   const migratedData = versionedSchemas.migrateToLatest(
-    "com.dip.ticket.received", 
-    v1Data, 
-    "1.0"
+    "com.dip.ticket.received",
+    v1Data,
+    "1.0",
   );
-  
+
   const validation = validateEventData("com.dip.ticket.received", migratedData);
   assert(validation.isValid, "Migrated data should be valid");
 }
@@ -322,21 +323,21 @@ Test complete event workflows:
 export async function testTicketProcessingFlow() {
   // 1. Create ticket received event
   const ticketEvent = createTestTicketEvent();
-  
+
   // 2. Simulate classification
   const classificationEvent = simulateClassification(ticketEvent);
-  
+
   // 3. Verify event correlation
   assert(
     classificationEvent.getCorrelationId() === ticketEvent.getCorrelationId(),
-    "Events should maintain correlation"
+    "Events should maintain correlation",
   );
-  
+
   // 4. Test event chaining
   const routingEvent = simulateRouting(classificationEvent);
   assert(
     routingEvent.getCausationId() === classificationEvent.getAttribute("id"),
-    "Causation chain should be maintained"
+    "Causation chain should be maintained",
   );
 }
 ```
@@ -357,17 +358,17 @@ const eventMetrics = EventBuilders.metricsCollected({
       value: 1500,
       unit: "count",
       timestamp: new Date().toISOString(),
-      dimensions: { event_type: "ticket.received", status: "success" }
+      dimensions: { event_type: "ticket.received", status: "success" },
     },
     {
       name: "event_processing_duration",
       value: 125.5,
       unit: "milliseconds",
       timestamp: new Date().toISOString(),
-      dimensions: { service: "classifier", operation: "intent_classification" }
-    }
+      dimensions: { service: "classifier", operation: "intent_classification" },
+    },
   ],
-  collected_at: new Date().toISOString()
+  collected_at: new Date().toISOString(),
 });
 ```
 
@@ -379,13 +380,13 @@ Include trace context in all events:
 const eventWithTracing = TypedCloudEvent.create({
   source: EventSources.CLASSIFIER_SERVICE,
   type: "com.dip.intent.classified",
-  data: classificationData
+  data: classificationData,
 });
 
 // Add OpenTelemetry trace context
 eventWithTracing.addTraceContext(
   "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-  "congo=t61rcWkgMzE"
+  "congo=t61rcWkgMzE",
 );
 ```
 
@@ -403,11 +404,11 @@ const healthEvent = EventBuilders.serviceHealthCheck({
     cpu_usage_percent: 45.2,
     memory_usage_percent: 67.8,
     response_time_ms: 125,
-    last_health_check: new Date().toISOString()
+    last_health_check: new Date().toISOString(),
   },
   check_type: "scheduled",
   status_changed: false,
-  checked_at: new Date().toISOString()
+  checked_at: new Date().toISOString(),
 });
 ```
 
@@ -425,7 +426,7 @@ const sensitiveEvent = TypedCloudEvent.create({
   // Custom extension attributes
   ["x-sensitivity-level"]: "confidential",
   ["x-compliance-tags"]: "gdpr,hipaa",
-  ["x-retention-days"]: "2555" // 7 years
+  ["x-retention-days"]: "2555", // 7 years
 });
 ```
 
@@ -438,7 +439,7 @@ Avoid including PII in events or encrypt it:
 const secureEvent = {
   ticket_id: "123",
   customer_id: "customer-456", // Reference only
-  customer_tier: "enterprise",   // Non-PII metadata only
+  customer_tier: "enterprise", // Non-PII metadata only
   // PII stored securely elsewhere
 };
 
@@ -446,8 +447,8 @@ const secureEvent = {
 const insecureEvent = {
   ticket_id: "123",
   customer_email: "john.doe@company.com", // PII
-  customer_phone: "+1-555-0123",         // PII
-  customer_ssn: "123-45-6789"            // Highly sensitive PII
+  customer_phone: "+1-555-0123", // PII
+  customer_ssn: "123-45-6789", // Highly sensitive PII
 };
 ```
 
@@ -458,14 +459,14 @@ Include minimal authentication context:
 ```typescript
 const authenticatedEvent = {
   ticket_id: "123",
-  actor_id: "user-456",     // Reference to authenticated user
-  actor_type: "user",       // Type of actor
+  actor_id: "user-456", // Reference to authenticated user
+  actor_type: "user", // Type of actor
   session_id: "session-789", // Session reference
   // No passwords, tokens, or sensitive auth data
   metadata: {
     request_id: "req-001",
-    ip_address: "192.168.1.100" // Only if needed for security
-  }
+    ip_address: "192.168.1.100", // Only if needed for security
+  },
 };
 ```
 
@@ -485,12 +486,12 @@ const auditEvent = EventBuilders.auditLogCreated({
     timestamp: new Date().toISOString(),
     before_state: { priority: "low" },
     after_state: { priority: "high" },
-    reason: "Customer escalation request"
+    reason: "Customer escalation request",
   },
   compliance_tags: ["gdpr", "sox"],
   retention_period_days: 2555,
   encryption_level: "high",
-  logged_at: new Date().toISOString()
+  logged_at: new Date().toISOString(),
 });
 ```
 
@@ -505,18 +506,18 @@ const retentionPolicies = {
   "com.dip.ticket.received": {
     retention_days: 2555, // 7 years for compliance
     archival_strategy: "cold_storage",
-    encryption_required: true
+    encryption_required: true,
   },
   "com.dip.system.health.check": {
-    retention_days: 30,    // Short retention for system events
+    retention_days: 30, // Short retention for system events
     archival_strategy: "delete",
-    encryption_required: false
+    encryption_required: false,
   },
   "com.dip.audit.action.performed": {
-    retention_days: 3653,  // 10 years for audit
+    retention_days: 3653, // 10 years for audit
     archival_strategy: "immutable_storage",
-    encryption_required: true
-  }
+    encryption_required: true,
+  },
 };
 ```
 
@@ -532,7 +533,7 @@ const deadLetterEvent = {
   first_failure_at: "2024-01-01T10:00:00Z",
   last_failure_at: "2024-01-01T10:30:00Z",
   dead_letter_queue: "dlq-classifier-failures",
-  requires_manual_intervention: true
+  requires_manual_intervention: true,
 };
 ```
 

@@ -12,7 +12,12 @@
       "Bash(gh label:*)",
       "Bash(gh api:*)",
       "Bash(deno fmt:*)",
-      "Bash(deno test:*)"
+      "Bash(deno test:*)",
+      "Bash(gh run view:*)",
+      "Bash(deno fmt:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "WebSearch"
     ],
     "deny": [
       "Bash(python3 -m pytest tests/integration/test_event_flow.py -v)",

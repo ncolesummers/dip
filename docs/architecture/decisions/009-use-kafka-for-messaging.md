@@ -16,6 +16,7 @@ Our event-driven architecture (ADR-007) requires a robust message broker that ca
 - **Support multiple consumers**: Fan-out to multiple services
 
 Key requirements:
+
 - At-least-once delivery semantics
 - Message retention for audit and replay
 - Partitioning for parallel processing
@@ -27,6 +28,7 @@ Key requirements:
 We will use Apache Kafka as our central message bus for event streaming.
 
 Implementation approach:
+
 1. **Deploy Kafka cluster** with 3+ brokers for high availability
 2. **Use topic-per-event-type** strategy for organization
 3. **Implement partitioning** based on document/entity ID
@@ -66,12 +68,14 @@ Implementation approach:
 Traditional message broker with AMQP support.
 
 **Pros:**
+
 - Simpler to operate
 - Better for low-latency
 - Flexible routing
 - Good management UI
 
 **Cons:**
+
 - Lower throughput
 - Less suitable for streaming
 - Limited replay capability
@@ -84,12 +88,14 @@ Traditional message broker with AMQP support.
 Redis-based streaming solution.
 
 **Pros:**
+
 - Simple setup
 - Low latency
 - Multi-purpose (cache + streams)
 - Good for small scale
 
 **Cons:**
+
 - Limited durability
 - Memory constraints
 - Less mature for streaming
@@ -102,12 +108,14 @@ Redis-based streaming solution.
 Lightweight messaging system.
 
 **Pros:**
+
 - Very lightweight
 - Simple protocol
 - Good performance
 - Easy clustering
 
 **Cons:**
+
 - Less mature ecosystem
 - Limited persistence options
 - Fewer enterprise features
@@ -134,12 +142,12 @@ kafka-topics --create \
 ```typescript
 // shared/events/kafka-producer.ts
 const producer = new KafkaProducer({
-  'metadata.broker.list': 'kafka:9092',
-  'compression.type': 'snappy',
-  'enable.idempotence': true,
-  'acks': 'all',
-  'retries': 10,
-  'max.in.flight.requests.per.connection': 5
+  "metadata.broker.list": "kafka:9092",
+  "compression.type": "snappy",
+  "enable.idempotence": true,
+  "acks": "all",
+  "retries": 10,
+  "max.in.flight.requests.per.connection": 5,
 });
 ```
 
@@ -148,11 +156,11 @@ const producer = new KafkaProducer({
 ```typescript
 // shared/events/kafka-consumer.ts
 const consumer = new KafkaConsumer({
-  'metadata.broker.list': 'kafka:9092',
-  'group.id': 'classification-service',
-  'enable.auto.commit': false,
-  'auto.offset.reset': 'earliest',
-  'isolation.level': 'read_committed'
+  "metadata.broker.list": "kafka:9092",
+  "group.id": "classification-service",
+  "enable.auto.commit": false,
+  "auto.offset.reset": "earliest",
+  "isolation.level": "read_committed",
 });
 ```
 

@@ -16,6 +16,7 @@ Modern software development increasingly benefits from AI assistance to accelera
 - **Supports our technology stack** (Deno, TypeScript, Docker, etc.)
 
 Key considerations:
+
 - Developer productivity is crucial for project velocity
 - Code consistency across services is essential for maintainability
 - Onboarding new developers should be streamlined
@@ -27,6 +28,7 @@ Key considerations:
 We will adopt Claude Code as our standard AI-assisted development tool for the DIP project.
 
 Claude Code will be used for:
+
 1. **Code Generation**: Creating new services, components, and features
 2. **Code Review Assistance**: Identifying patterns, bugs, and improvements
 3. **Documentation**: Generating and maintaining technical documentation
@@ -35,6 +37,7 @@ Claude Code will be used for:
 6. **Learning**: Helping developers understand unfamiliar code or technologies
 
 Integration approach:
+
 - Configure Claude Code with our project context and conventions
 - Establish guidelines for appropriate AI assistance use
 - Document patterns that work well with AI assistance
@@ -75,12 +78,14 @@ Integration approach:
 Microsoft's AI pair programmer integrated with popular IDEs.
 
 **Pros:**
+
 - Deep IDE integration
 - Large training dataset
 - Good for line-by-line completion
 - Wide language support
 
 **Cons:**
+
 - Limited context awareness
 - Primarily autocomplete focused
 - Less capable for complex refactoring
@@ -93,12 +98,14 @@ Microsoft's AI pair programmer integrated with popular IDEs.
 OpenAI's general-purpose AI assistant.
 
 **Pros:**
+
 - General purpose flexibility
 - Good for explanations
 - Wide knowledge base
 - Regular updates
 
 **Cons:**
+
 - No codebase integration
 - Limited context window
 - Not specialized for coding
@@ -111,12 +118,14 @@ OpenAI's general-purpose AI assistant.
 Amazon's AI coding companion.
 
 **Pros:**
+
 - AWS integration
 - Security scanning
 - Free tier available
 - IDE integration
 
 **Cons:**
+
 - Limited to specific IDEs
 - Less sophisticated than Claude
 - AWS-centric focus
@@ -129,12 +138,14 @@ Amazon's AI coding companion.
 Traditional development without AI tools.
 
 **Pros:**
+
 - No external dependencies
 - Complete control
 - No privacy concerns
 - No additional costs
 
 **Cons:**
+
 - Slower development
 - More manual work
 - Higher cognitive load
@@ -150,6 +161,7 @@ Traditional development without AI tools.
 ## Claude Code Usage Guidelines
 
 ### Appropriate Use Cases
+
 ✅ Generating boilerplate code
 ✅ Implementing well-defined features
 ✅ Writing tests for existing code
@@ -159,6 +171,7 @@ Traditional development without AI tools.
 ✅ Learning new technologies
 
 ### Inappropriate Use Cases
+
 ❌ Security-critical code without review
 ❌ Business logic without understanding
 ❌ Blindly accepting suggestions
@@ -173,18 +186,21 @@ Create `.claude/claude.md` for project context:
 # DIP Project Context
 
 ## Architecture
+
 - Deno-based microservices
 - Event-driven with CloudEvents
 - Prometheus/Grafana monitoring
 - Kafka message bus
 
 ## Coding Standards
+
 - TypeScript strict mode
 - Zod for validation
 - BaseService pattern for services
 - Comprehensive error handling
 
 ## Key Patterns
+
 - Use shared/ for common code
 - Follow ADRs for decisions
 - Write tests for all features
@@ -240,6 +256,7 @@ Consider:
 ### Metrics for Success
 
 Track AI assistance effectiveness:
+
 - Development velocity changes
 - Code quality metrics
 - Bug rates in AI-assisted vs manual code

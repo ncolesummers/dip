@@ -15,6 +15,7 @@ TypeScript provides compile-time type safety, but we need runtime validation for
 - **Data transformation**: Parsing and transforming input data
 
 Our requirements:
+
 - TypeScript type inference from schemas
 - Composable schema definitions
 - Good performance for high-throughput scenarios
@@ -27,6 +28,7 @@ Our requirements:
 We will use Zod as our primary runtime validation library.
 
 Implementation strategy:
+
 1. **Define schemas for all external data** entering our services
 2. **Use type inference** to derive TypeScript types from schemas
 3. **Validate at service boundaries** before processing
@@ -66,12 +68,14 @@ Implementation strategy:
 Mature validation library with extensive features.
 
 **Pros:**
+
 - Very mature and stable
 - Extensive validation rules
 - Good error messages
 - Wide adoption
 
 **Cons:**
+
 - No TypeScript type inference
 - Larger bundle size
 - Less TypeScript-friendly API
@@ -84,12 +88,14 @@ Mature validation library with extensive features.
 Popular schema validation library.
 
 **Pros:**
+
 - Good TypeScript support
 - Familiar API
 - Good ecosystem
 - Battle-tested
 
 **Cons:**
+
 - Weaker type inference than Zod
 - Larger bundle size
 - Less composable
@@ -102,12 +108,14 @@ Popular schema validation library.
 Functional programming approach to validation.
 
 **Pros:**
+
 - Strong type safety
 - Functional programming patterns
 - Good for complex transformations
 - Excellent type inference
 
 **Cons:**
+
 - Steep learning curve
 - Complex API
 - Smaller community
@@ -120,11 +128,13 @@ Functional programming approach to validation.
 Custom validation functions.
 
 **Pros:**
+
 - Complete control
 - No dependencies
 - Optimized for specific needs
 
 **Cons:**
+
 - Time-consuming to implement
 - Error-prone
 - No type inference
@@ -147,7 +157,7 @@ export const DocumentSchema = z.object({
   contentType: z.enum(["text/plain", "text/html", "application/pdf"]),
   size: z.number().positive().max(10_000_000), // 10MB max
   createdAt: z.string().datetime(),
-  metadata: z.record(z.string(), z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Infer TypeScript type from schema
@@ -164,15 +174,15 @@ export const CloudEventSchema = z.object({
   source: z.string().url(),
   type: z.string().regex(/^com\.dip\.[a-z]+\.[a-z]+$/),
   time: z.string().datetime(),
-  data: z.unknown()
+  data: z.unknown(),
 });
 
 // Typed CloudEvent with data validation
 export function createTypedEventSchema<T extends z.ZodType>(
-  dataSchema: T
+  dataSchema: T,
 ) {
   return CloudEventSchema.extend({
-    data: dataSchema
+    data: dataSchema,
   });
 }
 ```
@@ -183,20 +193,20 @@ export function createTypedEventSchema<T extends z.ZodType>(
 // services/ingestion/handlers.ts
 export async function handleIngestion(request: Request) {
   const body = await request.json();
-  
+
   // Validate input
   const result = DocumentSchema.safeParse(body);
-  
+
   if (!result.success) {
     return new Response(
       JSON.stringify({
         error: "Validation failed",
-        details: result.error.format()
+        details: result.error.format(),
       }),
-      { status: 400 }
+      { status: 400 },
     );
   }
-  
+
   // Process validated data
   const document = result.data;
   // ...
@@ -210,14 +220,14 @@ export async function handleIngestion(request: Request) {
 export const PaginationSchema = z.object({
   page: z.number().int().positive().default(1),
   limit: z.number().int().positive().max(100).default(20),
-  sort: z.enum(["asc", "desc"]).default("desc")
+  sort: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const ErrorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
   details: z.unknown().optional(),
-  timestamp: z.string().datetime()
+  timestamp: z.string().datetime(),
 });
 ```
 
@@ -229,16 +239,16 @@ export const ServiceConfigSchema = z.object({
   service: z.object({
     name: z.string(),
     version: z.string().regex(/^\d+\.\d+\.\d+$/),
-    port: z.number().int().positive().max(65535)
+    port: z.number().int().positive().max(65535),
   }),
   kafka: z.object({
     brokers: z.array(z.string()),
-    groupId: z.string()
+    groupId: z.string(),
   }),
   monitoring: z.object({
     metricsPort: z.number().int().positive().max(65535),
-    logLevel: z.enum(["debug", "info", "warn", "error"])
-  })
+    logLevel: z.enum(["debug", "info", "warn", "error"]),
+  }),
 });
 ```
 

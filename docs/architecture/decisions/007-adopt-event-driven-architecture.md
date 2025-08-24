@@ -15,6 +15,7 @@ The Deno Intelligence Platform needs to process high volumes of data with varyin
 - **Limited flexibility** for adding new consumers
 
 Our requirements include:
+
 - Processing events asynchronously at scale
 - Adding new services without modifying existing ones
 - Handling bursts of traffic gracefully
@@ -26,6 +27,7 @@ Our requirements include:
 We will adopt an event-driven architecture using publish-subscribe patterns for inter-service communication.
 
 Key principles:
+
 1. **Events as First-Class Citizens**: Services communicate primarily through events
 2. **Event Sourcing**: Critical state changes are captured as events
 3. **Eventual Consistency**: Accept eventual consistency for scalability
@@ -33,6 +35,7 @@ Key principles:
 5. **Event Schemas**: Strongly typed events using CloudEvents specification
 
 Implementation approach:
+
 - Services publish events for significant state changes
 - Services subscribe to events they're interested in
 - No direct service-to-service calls for async operations
@@ -72,12 +75,14 @@ Implementation approach:
 Traditional REST/RPC communication between services.
 
 **Pros:**
+
 - Simpler mental model
 - Immediate consistency
 - Easier debugging
 - Well-understood patterns
 
 **Cons:**
+
 - Tight coupling
 - Cascading failures
 - Difficult to scale
@@ -90,12 +95,14 @@ Traditional REST/RPC communication between services.
 Central orchestrator managing service interactions.
 
 **Pros:**
+
 - Clear flow control
 - Easier to understand
 - Central monitoring
 - Consistent error handling
 
 **Cons:**
+
 - Single point of failure
 - Orchestrator becomes bottleneck
 - Harder to evolve
@@ -108,12 +115,14 @@ Central orchestrator managing service interactions.
 Each service as an actor with message passing.
 
 **Pros:**
+
 - Strong isolation
 - Location transparency
 - Good for stateful services
 - Natural concurrency
 
 **Cons:**
+
 - Complex programming model
 - Limited tooling in JavaScript
 - Harder to debug
@@ -133,8 +142,8 @@ await this.publishEvent({
   data: {
     documentId: "doc-123",
     contentType: "application/pdf",
-    size: 1024000
-  }
+    size: 1024000,
+  },
 });
 
 // Classification service subscribes
@@ -146,8 +155,8 @@ this.subscribeToEvents("com.dip.document.ingested", async (event) => {
     data: {
       documentId: event.data.documentId,
       category: classification.category,
-      confidence: classification.confidence
-    }
+      confidence: classification.confidence,
+    },
   });
 });
 ```
@@ -167,6 +176,7 @@ Examples:
 ### Service Boundaries
 
 Each service:
+
 - Owns its data and state
 - Publishes events for state changes
 - Subscribes to relevant events

@@ -17,6 +17,7 @@ Our microservices need a web framework for HTTP APIs that:
 - **Multi-runtime**: Can run on Deno, Node, and edge runtimes
 
 Key requirements:
+
 - Fast routing performance
 - Built-in middleware for common tasks
 - Good developer experience
@@ -28,6 +29,7 @@ Key requirements:
 We will use Hono as our web framework for HTTP APIs in all services.
 
 Implementation approach:
+
 1. **Use Hono for all HTTP endpoints** in our services
 2. **Leverage built-in middleware** for CORS, logging, etc.
 3. **Create custom middleware** for authentication and metrics
@@ -67,12 +69,14 @@ Implementation approach:
 Deno-native web framework inspired by Koa.
 
 **Pros:**
+
 - Deno-first design
 - Familiar Koa-like API
 - Good middleware ecosystem
 - Mature for Deno
 
 **Cons:**
+
 - Deno-only
 - Larger than Hono
 - Less performance
@@ -85,12 +89,14 @@ Deno-native web framework inspired by Koa.
 Using Express through npm compatibility.
 
 **Pros:**
+
 - Most popular framework
 - Huge ecosystem
 - Well-documented
 - Familiar to developers
 
 **Cons:**
+
 - Not Deno-native
 - Performance overhead
 - Legacy design
@@ -103,12 +109,14 @@ Using Express through npm compatibility.
 Deno-native full-stack framework.
 
 **Pros:**
+
 - Deno-first
 - Islands architecture
 - Built-in SSR
 - Good DX
 
 **Cons:**
+
 - Full-stack focused
 - Overkill for APIs
 - Opinionated structure
@@ -121,12 +129,14 @@ Deno-native full-stack framework.
 Using Deno's built-in HTTP server.
 
 **Pros:**
+
 - No dependencies
 - Maximum performance
 - Full control
 - Minimal overhead
 
 **Cons:**
+
 - No routing
 - No middleware
 - More boilerplate
@@ -174,7 +184,7 @@ app.post(
     // Type-safe document handling
     const result = await processDocument(document);
     return c.json(result);
-  }
+  },
 );
 ```
 
@@ -187,16 +197,16 @@ export function metricsMiddleware() {
     const start = Date.now();
     const method = c.req.method;
     const path = c.req.path;
-    
+
     await next();
-    
+
     const duration = Date.now() - start;
     const status = c.res.status;
-    
+
     // Record metrics
     httpRequestDuration.observe(
       { method, path, status },
-      duration / 1000
+      duration / 1000,
     );
   };
 }
@@ -207,17 +217,17 @@ export function metricsMiddleware() {
 ```typescript
 app.onError((err, c) => {
   console.error(`Error handling request: ${err}`);
-  
+
   if (err instanceof ValidationError) {
     return c.json(
       { error: "Validation failed", details: err.errors },
-      400
+      400,
     );
   }
-  
+
   return c.json(
     { error: "Internal server error" },
-    500
+    500,
   );
 });
 ```
@@ -237,31 +247,31 @@ app.openapi(
       body: {
         content: {
           "application/json": {
-            schema: DocumentSchema
-          }
-        }
-      }
+            schema: DocumentSchema,
+          },
+        },
+      },
     },
     responses: {
       200: {
         description: "Success",
         content: {
           "application/json": {
-            schema: ResponseSchema
-          }
-        }
-      }
-    }
+            schema: ResponseSchema,
+          },
+        },
+      },
+    },
   },
-  handler
+  handler,
 );
 
 // Generate OpenAPI spec
 app.doc("/openapi.json", {
   info: {
     title: "DIP Ingestion Service",
-    version: "1.0.0"
-  }
+    version: "1.0.0",
+  },
 });
 ```
 

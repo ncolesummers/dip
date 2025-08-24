@@ -15,6 +15,7 @@ With our event-driven architecture (ADR-007), we need a standardized format for 
 - **Tool Support**: Leverage existing tooling and libraries
 
 Without standardization, we risk:
+
 - Each service defining its own event format
 - Difficulty integrating with external systems
 - Inconsistent metadata handling
@@ -26,6 +27,7 @@ Without standardization, we risk:
 We will adopt the CloudEvents specification v1.0 for all events in our system.
 
 Implementation details:
+
 1. **Use CloudEvents required attributes**: id, source, specversion, type
 2. **Include recommended attributes**: datacontenttype, time, subject
 3. **Implement TypeScript types** for type safety
@@ -62,11 +64,13 @@ Implementation details:
 Defining our own event structure.
 
 **Pros:**
+
 - Complete control
 - Optimized for our needs
 - No external dependencies
 
 **Cons:**
+
 - Reinventing the wheel
 - No ecosystem support
 - Maintenance burden
@@ -79,11 +83,13 @@ Defining our own event structure.
 Binary serialization format with schema evolution.
 
 **Pros:**
+
 - Compact binary format
 - Schema evolution support
 - Good performance
 
 **Cons:**
+
 - Binary format less debuggable
 - Requires schema registry
 - Less human-readable
@@ -107,7 +113,7 @@ export class TypedCloudEvent<T = unknown> implements CloudEvent {
   data?: T;
   subject?: string;
   correlationid?: string;
-  
+
   constructor(params: CloudEventParams<T>) {
     this.id = params.id || crypto.randomUUID();
     this.source = params.source;
@@ -133,7 +139,7 @@ export const CloudEventSchema = z.object({
   datacontenttype: z.string().optional(),
   data: z.unknown().optional(),
   subject: z.string().optional(),
-  correlationid: z.string().optional()
+  correlationid: z.string().optional(),
 });
 ```
 

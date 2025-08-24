@@ -14,6 +14,7 @@ The Deno Intelligence Platform needs to handle diverse workloads with varying co
 - **Response Generation**: Template processing, caching
 
 A monolithic architecture would face challenges:
+
 - Single scaling unit for diverse workloads
 - Technology lock-in for all components
 - Large blast radius for failures
@@ -21,6 +22,7 @@ A monolithic architecture would face challenges:
 - Team coupling and coordination overhead
 
 We need an architecture that allows:
+
 - Independent scaling of components
 - Technology diversity where beneficial
 - Fault isolation
@@ -32,12 +34,14 @@ We need an architecture that allows:
 We will adopt a microservices architecture with clearly defined service boundaries.
 
 Service decomposition:
+
 1. **Ingestion Service**: Document intake and preprocessing
 2. **Classification Service**: ML-based document classification
 3. **Routing Service**: Business rules and routing logic
 4. **Response Service**: Response generation and delivery
 
 Principles:
+
 - Services own their data and state
 - Communication via events (async) and APIs (sync)
 - Independent deployment and scaling
@@ -78,6 +82,7 @@ Principles:
 Single deployable application.
 
 **Pros:**
+
 - Simple deployment
 - Easy debugging
 - No network overhead
@@ -85,6 +90,7 @@ Single deployable application.
 - Simple transactions
 
 **Cons:**
+
 - Scaling limitations
 - Technology lock-in
 - Large blast radius
@@ -98,6 +104,7 @@ Single deployable application.
 Monolith with clear module boundaries.
 
 **Pros:**
+
 - Simpler than microservices
 - Clear boundaries
 - No network overhead
@@ -105,6 +112,7 @@ Monolith with clear module boundaries.
 - Single deployment
 
 **Cons:**
+
 - Still single scaling unit
 - Technology constraints
 - Shared failure domain
@@ -117,12 +125,14 @@ Monolith with clear module boundaries.
 Function-as-a-Service architecture.
 
 **Pros:**
+
 - Infinite scaling
 - Pay per use
 - No server management
 - Automatic scaling
 
 **Cons:**
+
 - Vendor lock-in
 - Cold starts
 - Limited execution time
@@ -205,15 +215,15 @@ export class ServiceName extends BaseService {
     super({
       name: "service-name",
       version: "1.0.0",
-      port: 8080
+      port: 8080,
     });
   }
-  
+
   async start() {
     await super.start();
     // Service-specific initialization
   }
-  
+
   async stop() {
     // Service-specific cleanup
     await super.stop();
@@ -237,7 +247,7 @@ services:
       - KAFKA_BROKERS=kafka:9092
     depends_on:
       - kafka
-  
+
   classification:
     build: ./services/classification
     ports:

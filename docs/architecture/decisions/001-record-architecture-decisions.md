@@ -18,7 +18,7 @@ We need a lightweight, sustainable way to capture and communicate the architectu
 
 ## Decision
 
-We will use Architecture Decision Records (ADRs) following Michael Nygard's format to document all significant architectural decisions. 
+We will use Architecture Decision Records (ADRs) following Michael Nygard's format to document all significant architectural decisions.
 
 Specifically, we will:
 
@@ -29,6 +29,7 @@ Specifically, we will:
 5. **Link to ADRs from code** where the decision impacts implementation
 
 An architectural decision is "significant" if it:
+
 - Affects the structure or behavior of the system
 - Introduces new technologies, frameworks, or patterns
 - Changes development or deployment workflows
@@ -65,11 +66,13 @@ An architectural decision is "significant" if it:
 External documentation platforms separate from the codebase.
 
 **Pros:**
+
 - Rich formatting capabilities
 - Easy to organize hierarchically
 - Good for non-technical stakeholders
 
 **Cons:**
+
 - Tends to become stale quickly
 - Not versioned with code
 - Requires separate access management
@@ -82,11 +85,13 @@ External documentation platforms separate from the codebase.
 Documenting decisions directly in code comments.
 
 **Pros:**
+
 - Closest to the implementation
 - No additional tooling needed
 - Automatically versioned
 
 **Cons:**
+
 - Scattered across codebase
 - No standard format
 - Hard to get overview of all decisions
@@ -99,11 +104,13 @@ Documenting decisions directly in code comments.
 Relying on tribal knowledge and informal communication.
 
 **Pros:**
+
 - No overhead
 - Maximum flexibility
 - No process to follow
 
 **Cons:**
+
 - Knowledge is lost when people leave
 - Decisions are reconsidered repeatedly
 - Onboarding is difficult
@@ -116,11 +123,13 @@ Relying on tribal knowledge and informal communication.
 Traditional design documents in various formats.
 
 **Pros:**
+
 - Can be very comprehensive
 - Good for complex systems
 - Industry standard in many organizations
 
 **Cons:**
+
 - Heavy-weight process
 - Often become outdated
 - Typically written once and forgotten
@@ -153,6 +162,7 @@ git commit -m "docs: Add ADR-XXX for [decision title]"
 ### When to Write an ADR
 
 Write an ADR when:
+
 - Selecting a new technology or framework
 - Defining a significant pattern or practice
 - Making trade-offs between quality attributes

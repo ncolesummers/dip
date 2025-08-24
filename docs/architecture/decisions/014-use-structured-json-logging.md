@@ -15,6 +15,7 @@ In our microservices architecture, effective logging is critical for:
 - **Correlation**: Tracing requests across multiple services
 
 Traditional text-based logging presents challenges:
+
 - Difficult to parse and query
 - Inconsistent format across services
 - Hard to correlate across services
@@ -22,6 +23,7 @@ Traditional text-based logging presents challenges:
 - Poor integration with log aggregation tools
 
 We need logging that is:
+
 - Machine-readable for automated processing
 - Consistent across all services
 - Enriched with contextual metadata
@@ -33,6 +35,7 @@ We need logging that is:
 We will use structured JSON logging for all services, with plans to aggregate logs using Loki.
 
 Implementation approach:
+
 1. **Log everything as JSON** to stdout/stderr
 2. **Include standard fields** in every log entry
 3. **Use correlation IDs** for request tracing
@@ -74,12 +77,14 @@ Implementation approach:
 Traditional line-based text logs.
 
 **Pros:**
+
 - Human readable
 - Simple to implement
 - Smaller size
 - No parsing overhead
 
 **Cons:**
+
 - Hard to parse
 - Inconsistent format
 - Limited querying
@@ -92,12 +97,14 @@ Traditional line-based text logs.
 Binary format for efficient storage.
 
 **Pros:**
+
 - Very compact
 - Fast serialization
 - Schema evolution
 - Type safety
 
 **Cons:**
+
 - Not human readable
 - Complex tooling
 - Debugging difficulty
@@ -110,12 +117,14 @@ Binary format for efficient storage.
 Part of OpenTelemetry observability framework.
 
 **Pros:**
+
 - Unified with traces and metrics
 - Vendor neutral
 - Rich context
 - Growing ecosystem
 
 **Cons:**
+
 - More complex setup
 - Heavier dependency
 - Still maturing
@@ -128,12 +137,14 @@ Part of OpenTelemetry observability framework.
 Traditional syslog protocol.
 
 **Pros:**
+
 - Well established
 - Wide tool support
 - Standard format
 - Network capable
 
 **Cons:**
+
 - Limited structure
 - Fixed fields
 - Less flexible
@@ -148,16 +159,16 @@ Traditional syslog protocol.
 ```typescript
 // Standard log entry structure
 interface LogEntry {
-  timestamp: string;      // ISO 8601 format
+  timestamp: string; // ISO 8601 format
   level: "debug" | "info" | "warn" | "error";
-  service: string;        // Service name
-  version: string;        // Service version
-  environment: string;    // dev, staging, prod
-  message: string;        // Log message
+  service: string; // Service name
+  version: string; // Service version
+  environment: string; // dev, staging, prod
+  message: string; // Log message
   correlation_id?: string; // Request correlation ID
-  trace_id?: string;      // Distributed trace ID
-  span_id?: string;       // Span ID for tracing
-  error?: {              // Error details if applicable
+  trace_id?: string; // Distributed trace ID
+  span_id?: string; // Span ID for tracing
+  error?: { // Error details if applicable
     type: string;
     message: string;
     stack?: string;
@@ -173,9 +184,9 @@ interface LogEntry {
 export class Logger {
   constructor(
     private service: string,
-    private version: string
+    private version: string,
   ) {}
-  
+
   private log(level: LogLevel, message: string, metadata?: any) {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
@@ -185,32 +196,34 @@ export class Logger {
       environment: Deno.env.get("DENO_ENV") || "development",
       message,
       correlation_id: getCorrelationId(),
-      ...metadata
+      ...metadata,
     };
-    
+
     console.log(JSON.stringify(entry));
   }
-  
+
   debug(message: string, metadata?: any) {
     this.log("debug", message, metadata);
   }
-  
+
   info(message: string, metadata?: any) {
     this.log("info", message, metadata);
   }
-  
+
   warn(message: string, metadata?: any) {
     this.log("warn", message, metadata);
   }
-  
+
   error(message: string, error?: Error, metadata?: any) {
     this.log("error", message, {
       ...metadata,
-      error: error ? {
-        type: error.name,
-        message: error.message,
-        stack: error.stack
-      } : undefined
+      error: error
+        ? {
+          type: error.name,
+          message: error.message,
+          stack: error.stack,
+        }
+        : undefined,
     });
   }
 }
@@ -225,31 +238,31 @@ const logger = new Logger("ingestion-service", "1.0.0");
 app.post("/ingest", async (c) => {
   const correlationId = c.req.header("X-Correlation-ID") || crypto.randomUUID();
   setCorrelationId(correlationId);
-  
+
   logger.info("Document ingestion started", {
     method: c.req.method,
     path: c.req.path,
-    correlation_id: correlationId
+    correlation_id: correlationId,
   });
-  
+
   try {
     const document = await c.req.json();
     logger.debug("Document received", {
       document_id: document.id,
-      size: document.size
+      size: document.size,
     });
-    
+
     const result = await processDocument(document);
-    
+
     logger.info("Document processed successfully", {
       document_id: result.id,
-      processing_time: result.processingTime
+      processing_time: result.processingTime,
     });
-    
+
     return c.json(result);
   } catch (error) {
     logger.error("Document processing failed", error, {
-      correlation_id: correlationId
+      correlation_id: correlationId,
     });
     throw error;
   }

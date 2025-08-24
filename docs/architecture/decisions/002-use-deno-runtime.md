@@ -17,6 +17,7 @@ The Deno Intelligence Platform requires a modern, secure, and performant runtime
 The JavaScript/TypeScript ecosystem has evolved significantly, and we have the opportunity to choose a runtime that learns from Node.js's decade of lessons while embracing modern development practices.
 
 Key requirements for our runtime:
+
 - First-class TypeScript support without transpilation overhead
 - Strong security model for handling untrusted inputs
 - Built-in testing, formatting, and linting tools
@@ -28,12 +29,14 @@ Key requirements for our runtime:
 We will use Deno as the runtime platform for all microservices in the DIP architecture.
 
 Deno will be used for:
+
 - All service implementations (ingestion, classification, routing, response)
 - Shared libraries and utilities
 - Testing and development tooling
 - Build and deployment scripts
 
 We will leverage Deno's built-in features:
+
 - TypeScript execution without separate compilation step
 - Permission system for security boundaries
 - Built-in test runner for unit and integration tests
@@ -75,12 +78,14 @@ We will leverage Deno's built-in features:
 The traditional and most widely adopted JavaScript runtime.
 
 **Pros:**
+
 - Massive ecosystem with npm
 - Mature tooling and widespread knowledge
 - Extensive enterprise adoption
 - Battle-tested in production
 
 **Cons:**
+
 - Complex TypeScript setup with multiple tools
 - No built-in security model
 - node_modules dependency hell
@@ -94,12 +99,14 @@ The traditional and most widely adopted JavaScript runtime.
 A newer, performance-focused JavaScript runtime.
 
 **Pros:**
+
 - Exceptional performance claims
 - Node.js compatibility
 - Built-in bundler and transpiler
 - Fast installation and execution
 
 **Cons:**
+
 - Very new and rapidly changing
 - Smaller community and ecosystem
 - Less mature, potential stability issues
@@ -112,12 +119,14 @@ A newer, performance-focused JavaScript runtime.
 A statically typed, compiled language.
 
 **Pros:**
+
 - Excellent performance
 - Strong concurrency model
 - Single binary deployment
 - Good microservices ecosystem
 
 **Cons:**
+
 - Different language from frontend (assuming TypeScript/JavaScript frontend)
 - Longer development cycles due to compilation
 - Less flexibility for rapid prototyping

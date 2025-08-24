@@ -7,19 +7,19 @@ import { assertEquals, assertExists, assertThrows } from "jsr:@std/assert";
 import { z } from "zod";
 import { TypedCloudEvent } from "./base.ts";
 import {
-  EventBuilders,
-  validateEventData,
-  safeParseEvent,
-  versionedSchemas,
-  TicketReceivedEventSchema,
-  IntentClassifiedEventSchema,
-  TicketRoutedEventSchema,
-  ResponseGeneratedEventSchema,
-  SystemErrorEventSchema,
-  MetricsCollectedEventSchema,
   AuditLogCreatedEventSchema,
+  EventBuilders,
+  IntentClassifiedEventSchema,
+  MetricsCollectedEventSchema,
+  ResponseGeneratedEventSchema,
+  safeParseEvent,
+  SystemErrorEventSchema,
+  TicketReceivedEventSchema,
+  TicketRoutedEventSchema,
+  validateEventData,
+  versionedSchemas,
 } from "./schemas.ts";
-import { EventTypes, EventSources, EventPriority } from "./types.ts";
+import { EventPriority, EventSources, EventTypes } from "./types.ts";
 
 // ============================================================================
 // TEST DATA FACTORIES
@@ -120,28 +120,28 @@ function createValidIntentClassifiedEvent() {
 
 Deno.test("Ticket Received Event Schema Validation", () => {
   const validData = createValidTicketReceivedEvent();
-  
+
   // Test valid data
   const result = safeParseEvent(TicketReceivedEventSchema, validData);
   assertEquals(result.success, true);
-  
+
   if (result.success) {
     assertExists(result.data.ticket);
     assertExists(result.data.source_system);
     assertExists(result.data.received_at);
   }
-  
+
   // Test invalid data - missing required field
   const invalidData = { ...validData };
   delete (invalidData as any).ticket;
-  
+
   const invalidResult = safeParseEvent(TicketReceivedEventSchema, invalidData);
   assertEquals(invalidResult.success, false);
 });
 
 Deno.test("Ticket Schema Field Validation", () => {
   const validTicket = createValidTicket();
-  
+
   // Test invalid email
   const invalidEmailTicket = {
     ...validTicket,
@@ -150,27 +150,27 @@ Deno.test("Ticket Schema Field Validation", () => {
       email: "not-an-email",
     },
   };
-  
+
   const ticketData = { ...createValidTicketReceivedEvent(), ticket: invalidEmailTicket };
   const result = safeParseEvent(TicketReceivedEventSchema, ticketData);
   assertEquals(result.success, false);
-  
+
   // Test invalid UUID
   const invalidUuidTicket = {
     ...validTicket,
     id: "not-a-uuid",
   };
-  
+
   const uuidTicketData = { ...createValidTicketReceivedEvent(), ticket: invalidUuidTicket };
   const uuidResult = safeParseEvent(TicketReceivedEventSchema, uuidTicketData);
   assertEquals(uuidResult.success, false);
-  
+
   // Test invalid priority
   const invalidPriorityTicket = {
     ...validTicket,
     priority: "invalid-priority",
   };
-  
+
   const priorityTicketData = { ...createValidTicketReceivedEvent(), ticket: invalidPriorityTicket };
   const priorityResult = safeParseEvent(TicketReceivedEventSchema, priorityTicketData);
   assertEquals(priorityResult.success, false);
@@ -178,11 +178,11 @@ Deno.test("Ticket Schema Field Validation", () => {
 
 Deno.test("Intent Classification Event Schema Validation", () => {
   const validData = createValidIntentClassifiedEvent();
-  
+
   // Test valid data
   const result = safeParseEvent(IntentClassifiedEventSchema, validData);
   assertEquals(result.success, true);
-  
+
   // Test invalid confidence score (> 1.0)
   const invalidConfidenceData = {
     ...validData,
@@ -191,16 +191,16 @@ Deno.test("Intent Classification Event Schema Validation", () => {
       confidence_score: 1.5, // Invalid: > 1.0
     },
   };
-  
+
   const invalidResult = safeParseEvent(IntentClassifiedEventSchema, invalidConfidenceData);
   assertEquals(invalidResult.success, false);
-  
+
   // Test negative processing time
   const negativeTimeData = {
     ...validData,
     processing_time_ms: -100, // Invalid: negative time
   };
-  
+
   const negativeTimeResult = safeParseEvent(IntentClassifiedEventSchema, negativeTimeData);
   assertEquals(negativeTimeResult.success, false);
 });
@@ -241,10 +241,10 @@ Deno.test("Routing Event Schema Validation", () => {
       priority: EventPriority.MEDIUM,
     },
   };
-  
+
   const result = safeParseEvent(TicketRoutedEventSchema, validRoutingData);
   assertEquals(result.success, true);
-  
+
   // Test invalid agent email
   const invalidAgentData = {
     ...validRoutingData,
@@ -253,7 +253,7 @@ Deno.test("Routing Event Schema Validation", () => {
       email: "not-an-email",
     },
   };
-  
+
   const invalidResult = safeParseEvent(TicketRoutedEventSchema, invalidAgentData);
   assertEquals(invalidResult.success, false);
 });
@@ -265,7 +265,8 @@ Deno.test("Response Generated Event Schema Validation", () => {
     response_type: "auto_generated" as const,
     content: {
       subject: "Re: Your support request",
-      body: "Thank you for contacting us. We have received your request and will respond within 24 hours.",
+      body:
+        "Thank you for contacting us. We have received your request and will respond within 24 hours.",
       format: "plain_text" as const,
     },
     channel: "email" as const,
@@ -280,10 +281,10 @@ Deno.test("Response Generated Event Schema Validation", () => {
       priority: EventPriority.MEDIUM,
     },
   };
-  
+
   const result = safeParseEvent(ResponseGeneratedEventSchema, validResponseData);
   assertEquals(result.success, true);
-  
+
   // Test empty response body
   const emptyBodyData = {
     ...validResponseData,
@@ -292,7 +293,7 @@ Deno.test("Response Generated Event Schema Validation", () => {
       body: "", // Invalid: empty body
     },
   };
-  
+
   const emptyBodyResult = safeParseEvent(ResponseGeneratedEventSchema, emptyBodyData);
   assertEquals(emptyBodyResult.success, false);
 });
@@ -320,10 +321,10 @@ Deno.test("System Error Event Schema Validation", () => {
       priority: EventPriority.MEDIUM,
     },
   };
-  
+
   const result = safeParseEvent(SystemErrorEventSchema, validErrorData);
   assertEquals(result.success, true);
-  
+
   // Test negative retry count
   const negativeRetryData = {
     ...validErrorData,
@@ -332,7 +333,7 @@ Deno.test("System Error Event Schema Validation", () => {
       retry_count: -1, // Invalid: negative retry count
     },
   };
-  
+
   const negativeRetryResult = safeParseEvent(SystemErrorEventSchema, negativeRetryData);
   assertEquals(negativeRetryResult.success, false);
 });
@@ -366,16 +367,16 @@ Deno.test("Metrics Collected Event Schema Validation", () => {
       priority: EventPriority.MEDIUM,
     },
   };
-  
+
   const result = safeParseEvent(MetricsCollectedEventSchema, validMetricsData);
   assertEquals(result.success, true);
-  
+
   // Test empty metrics array
   const emptyMetricsData = {
     ...validMetricsData,
     metrics: [], // Invalid: no metrics
   };
-  
+
   const emptyMetricsResult = safeParseEvent(MetricsCollectedEventSchema, emptyMetricsData);
   assertEquals(emptyMetricsResult.success, false);
 });
@@ -407,7 +408,7 @@ Deno.test("Audit Log Event Schema Validation", () => {
       priority: EventPriority.MEDIUM,
     },
   };
-  
+
   const result = safeParseEvent(AuditLogCreatedEventSchema, validAuditData);
   assertEquals(result.success, true);
 });
@@ -422,12 +423,12 @@ Deno.test("Event Builders Create Valid Events", () => {
   assertEquals(ticketEvent.type, EventTypes.TICKET_RECEIVED);
   assertExists(ticketEvent.data);
   assertExists(ticketEvent.schema);
-  
+
   // Test classification builder
   const classificationEvent = EventBuilders.intentClassified(createValidIntentClassifiedEvent());
   assertEquals(classificationEvent.type, EventTypes.INTENT_CLASSIFIED);
   assertExists(classificationEvent.data);
-  
+
   // Test system error builder
   const errorEvent = EventBuilders.systemError({
     error: {
@@ -446,7 +447,7 @@ Deno.test("Event Builders Create Valid Events", () => {
       priority: EventPriority.MEDIUM,
     },
   });
-  
+
   assertEquals(errorEvent.type, EventTypes.SERVICE_ERROR);
   assertExists(errorEvent.data);
 });
@@ -463,7 +464,7 @@ Deno.test("Event Builders Throw on Invalid Data", () => {
       received_at: new Date().toISOString(),
     });
   });
-  
+
   // Test invalid classification confidence
   assertThrows(() => {
     EventBuilders.intentClassified({
@@ -487,19 +488,19 @@ Deno.test("Event Correlation and Causation", () => {
     type: EventTypes.TICKET_RECEIVED,
     data: createValidTicketReceivedEvent(),
   }, TicketReceivedEventSchema);
-  
+
   originalEvent.setCorrelationId("test-correlation-123");
-  
+
   // Create response event
   const responseEvent = originalEvent.createResponse(
     EventTypes.INTENT_CLASSIFIED,
-    createValidIntentClassifiedEvent()
+    createValidIntentClassifiedEvent(),
   );
-  
+
   // Verify correlation
   assertEquals(responseEvent.getCorrelationId(), "test-correlation-123");
   assertEquals(responseEvent.getCausationId(), originalEvent.getAttribute("id"));
-  
+
   // Create another response
   const routingEvent = responseEvent.createResponse(
     EventTypes.TICKET_ROUTED,
@@ -518,9 +519,9 @@ Deno.test("Event Correlation and Causation", () => {
         environment: "test" as const,
         priority: EventPriority.MEDIUM,
       },
-    }
+    },
   );
-  
+
   // Verify correlation chain
   assertEquals(routingEvent.getCorrelationId(), "test-correlation-123");
   assertEquals(routingEvent.getCausationId(), responseEvent.getAttribute("id"));
@@ -532,18 +533,18 @@ Deno.test("Event Correlation and Causation", () => {
 
 Deno.test("validateEventData Function", () => {
   const validData = createValidTicketReceivedEvent();
-  
+
   // Test valid data
   const result = validateEventData(EventTypes.TICKET_RECEIVED, validData);
   assertEquals(result.isValid, true);
   assertExists(result.validatedData);
-  
+
   // Test invalid data
   const invalidData = { ...validData, ticket: null };
   const invalidResult = validateEventData(EventTypes.TICKET_RECEIVED, invalidData);
   assertEquals(invalidResult.isValid, false);
   assertExists(invalidResult.errors);
-  
+
   // Test unknown event type
   const unknownResult = validateEventData("unknown.event.type", validData);
   assertEquals(unknownResult.isValid, false);
@@ -563,7 +564,7 @@ Deno.test("Schema Versioning and Migration", () => {
     }).optional(),
     compliance_flags: z.array(z.string()).optional(),
   });
-  
+
   // Register the new version
   versionedSchemas.registerVersion(EventTypes.TICKET_RECEIVED, "2.0", {
     version: "2.0",
@@ -577,10 +578,10 @@ Deno.test("Schema Versioning and Migration", () => {
       compliance_flags: [],
     }),
   });
-  
+
   // Test migration from 1.0 to 2.0
   const v1Data = createValidTicketReceivedEvent();
-  
+
   // Get the migration function and apply it manually since the test version registration is local
   const v2SchemaInfo = versionedSchemas.getSchema(EventTypes.TICKET_RECEIVED, "2.0");
   const migration = (v1Data: any) => ({
@@ -591,13 +592,13 @@ Deno.test("Schema Versioning and Migration", () => {
     },
     compliance_flags: [],
   });
-  
+
   const migratedData = migration(v1Data);
-  
+
   // Validate migrated data against v2 schema
   const result = safeParseEvent(TicketReceivedEventV2Schema, migratedData);
   assertEquals(result.success, true);
-  
+
   if (result.success) {
     assertExists(result.data.processing_hints);
     assertEquals(result.data.processing_hints.auto_respond, true);
@@ -612,19 +613,19 @@ Deno.test("Schema Versioning and Migration", () => {
 Deno.test("Schema Validation Performance", () => {
   const validData = createValidTicketReceivedEvent();
   const iterations = 1000;
-  
+
   const start = performance.now();
-  
+
   for (let i = 0; i < iterations; i++) {
     const result = safeParseEvent(TicketReceivedEventSchema, validData);
     assertEquals(result.success, true);
   }
-  
+
   const end = performance.now();
   const avgTime = (end - start) / iterations;
-  
+
   console.log(`Average validation time: ${avgTime.toFixed(3)}ms`);
-  
+
   // Ensure validation is reasonably fast (< 5ms per validation)
   // This is a reasonable threshold for production use
   if (avgTime > 5) {
@@ -635,19 +636,19 @@ Deno.test("Schema Validation Performance", () => {
 Deno.test("Event Creation Performance", () => {
   const validData = createValidTicketReceivedEvent();
   const iterations = 1000;
-  
+
   const start = performance.now();
-  
+
   for (let i = 0; i < iterations; i++) {
     const event = EventBuilders.ticketReceived(validData);
     assertExists(event);
   }
-  
+
   const end = performance.now();
   const avgTime = (end - start) / iterations;
-  
+
   console.log(`Average event creation time: ${avgTime.toFixed(3)}ms`);
-  
+
   if (avgTime > 10) {
     console.warn(`Event creation is slower than expected: ${avgTime}ms`);
   }
@@ -678,10 +679,10 @@ Deno.test("Handle Edge Cases", () => {
     source_system: "minimal_system",
     received_at: new Date().toISOString(),
   };
-  
+
   const result = safeParseEvent(TicketReceivedEventSchema, minimalTicketData);
   assertEquals(result.success, true);
-  
+
   // Test with maximum fields
   const maximalTicketData = {
     ...createValidTicketReceivedEvent(),
@@ -709,7 +710,7 @@ Deno.test("Handle Edge Cases", () => {
       sla_breach_at: new Date(Date.now() + 3600000).toISOString(),
     },
   };
-  
+
   const maximalResult = safeParseEvent(TicketReceivedEventSchema, maximalTicketData);
   assertEquals(maximalResult.success, true);
 });
@@ -720,7 +721,8 @@ Deno.test("Handle Unicode and Special Characters", () => {
     ticket: {
       ...createValidTicket(),
       subject: "問題報告: ログインできません 🚨",
-      description: "こんにちは、アカウントにログインできません。エラーメッセージ: 'パスワードが正しくありません'",
+      description:
+        "こんにちは、アカウントにログインできません。エラーメッセージ: 'パスワードが正しくありません'",
       customer: {
         ...createValidCustomer(),
         name: "田中 太郎",
@@ -730,10 +732,10 @@ Deno.test("Handle Unicode and Special Characters", () => {
       tags: ["ログイン", "認証", "日本語"],
     },
   };
-  
+
   const result = safeParseEvent(TicketReceivedEventSchema, unicodeTicketData);
   assertEquals(result.success, true);
-  
+
   if (result.success) {
     assertEquals(result.data.ticket.customer.language, "ja");
     assertEquals(result.data.ticket.tags?.includes("ログイン"), true);

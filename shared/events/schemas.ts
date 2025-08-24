@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { EventTypes, EventPriority, EventStatus } from "./types.ts";
+import { EventPriority, EventStatus, EventTypes } from "./types.ts";
 
 // ============================================================================
 // BASE SCHEMAS
@@ -837,7 +837,7 @@ export function validateEventData(eventType: string, data: unknown): {
   validatedData?: unknown;
 } {
   const schema = getEventSchema(eventType);
-  
+
   if (!schema) {
     return {
       isValid: false,
@@ -865,7 +865,7 @@ export function validateEventData(eventType: string, data: unknown): {
  */
 export function safeParseEvent<T>(
   schema: z.ZodSchema<T>,
-  data: unknown
+  data: unknown,
 ): { success: true; data: T } | { success: false; error: z.ZodError } {
   const result = schema.safeParse(data);
   return result;
@@ -897,7 +897,7 @@ export class VersionedEventSchemas {
   registerVersion(
     eventType: string,
     version: string,
-    schemaInfo: EventSchemaVersion
+    schemaInfo: EventSchemaVersion,
   ): void {
     if (!this.versions.has(eventType)) {
       this.versions.set(eventType, new Map());
@@ -922,7 +922,7 @@ export class VersionedEventSchemas {
     // Sort by version and return the latest
     const sortedVersions = Array.from(versions.entries())
       .sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }));
-    
+
     return sortedVersions[0]?.[1];
   }
 
