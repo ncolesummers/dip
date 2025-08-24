@@ -11,7 +11,8 @@
       "Bash(gh pr list:*)",
       "Bash(gh label:*)",
       "Bash(gh api:*)",
-      "Bash(deno fmt:*)"
+      "Bash(deno fmt:*)",
+      "Bash(deno test:*)"
     ],
     "deny": [
       "Bash(python3 -m pytest tests/integration/test_event_flow.py -v)",
