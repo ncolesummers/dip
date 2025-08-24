@@ -12,7 +12,7 @@
  * Runs all checks in parallel for speed (target: < 3 seconds).
  */
 
-import { brightGreen, brightRed, yellow, gray, bold } from "@std/fmt/colors";
+import { brightGreen, brightRed, yellow, gray, bold } from "@std/fmt/colors.ts";
 
 interface CheckResult {
   name: string;

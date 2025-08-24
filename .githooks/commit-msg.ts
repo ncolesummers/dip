@@ -13,7 +13,7 @@
  * - Valid commit types
  */
 
-import { brightGreen, brightRed, yellow, gray, bold, cyan } from "@std/fmt/colors";
+import { brightGreen, brightRed, yellow, gray, bold, cyan } from "@std/fmt/colors.ts";
 
 // Valid commit types based on Conventional Commits and Angular convention
 const COMMIT_TYPES = {

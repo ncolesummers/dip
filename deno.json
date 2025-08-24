@@ -54,7 +54,11 @@
     "compile:ingestion": "deno compile --allow-net --allow-env --allow-read --output=build/ingestion services/ingestion/main.ts",
     "generate:service": "deno run --allow-all scripts/generate-service.ts",
     "monitor:events": "deno run --allow-net --allow-env scripts/event-monitor.ts",
-    "metrics:server": "deno run --allow-net shared/observability/metrics.ts"
+    "metrics:server": "deno run --allow-net shared/observability/metrics.ts",
+    "hooks:install": "deno run --allow-read --allow-write --allow-run .githooks/install.ts",
+    "hooks:uninstall": "deno run --allow-read --allow-write --allow-run .githooks/install.ts --uninstall",
+    "hooks:test": "deno run --allow-run --allow-read --allow-write --allow-env .githooks/test-hooks.ts",
+    "precommit": "git add -A && git commit"
   },
   "compilerOptions": {
     "strict": true,
