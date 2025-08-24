@@ -150,7 +150,11 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     strategy:
       matrix:
-        service: ${{ fromJson(format('[{0}]', contains(needs.validate.outputs.services, ',') && format('"{0}"', join(split(needs.validate.outputs.services, ','), '","')) || format('"{0}"', needs.validate.outputs.services))) }}
+        include: ${{ fromJson(
+          needs.validate.outputs.services == 'ingestion,classifier,routing,response' && 
+          '[{"service": "ingestion"}, {"service": "classifier"}, {"service": "routing"}, {"service": "response"}]' || 
+          format('[{{"service": "{0}"}}]', needs.validate.outputs.services)
+        ) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

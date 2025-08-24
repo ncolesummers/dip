@@ -49,20 +49,22 @@ jobs:
           docker run -d \
             --name kafka \
             -p 9092:9092 \
-            -e KAFKA_BROKER_ID=1 \
-            -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT \
+            -e KAFKA_NODE_ID=1 \
+            -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT \
             -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+            -e KAFKA_PROCESS_ROLES=broker,controller \
+            -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:29093 \
+            -e KAFKA_LISTENERS=CONTROLLER://localhost:29093,PLAINTEXT://0.0.0.0:9092 \
+            -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
             -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
             -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
             -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 \
             -e KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0 \
-            -e KAFKA_JMX_PORT=9101 \
-            -e KAFKA_JMX_HOSTNAME=localhost \
-            -e KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 \
-            confluentinc/cp-kafka:latest || echo "Kafka container failed to start"
+            -e CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk \
+            confluentinc/cp-kafka:7.4.0 || echo "Kafka container failed to start"
           
           # Wait for Kafka to be ready
-          sleep 10
+          sleep 15
           echo "ready=true" >> $GITHUB_OUTPUT
 
       - name: Start Redis
@@ -272,7 +274,7 @@ jobs:
           import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
           
           serve((req) => {
-            return new Response(JSON.stringify({ service: "$service", status: "ok" }), {
+            return new Response(JSON.stringify({ service: "'"$service"'", status: "ok" }), {
               headers: { "content-type": "application/json" },
             });
           }, { port: 8000 + Math.floor(Math.random() * 100) });
