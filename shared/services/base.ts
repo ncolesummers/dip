@@ -4,15 +4,11 @@
  */
 
 import { Handler, serve } from "@std/http";
-import { Hono, Context } from "hono";
+import { Hono } from "hono";
 import { CloudEventConsumer, CloudEventPublisher } from "@events/mod.ts";
 import { TypedCloudEvent } from "@events/base.ts";
-import { EventType } from "@events/types.ts";
-import {
-  commonMetrics,
-  metricsMiddleware,
-  startMetricsServer,
-} from "@observability/metrics.ts";
+import { EventType, EventTypes } from "@events/types.ts";
+import { commonMetrics, metricsMiddleware, startMetricsServer } from "@observability/metrics.ts";
 
 export interface ServiceConfig {
   name: string;
@@ -77,12 +73,12 @@ export abstract class BaseService {
       c.header("Access-Control-Allow-Origin", "*");
       c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
       c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-      
+
       if (c.req.method === "OPTIONS") {
         return c.text("", 204);
       }
-      
-      await next();
+
+      return await next();
     });
 
     // Logging
@@ -280,8 +276,8 @@ export abstract class BaseService {
       // Emit service error event
       this.emitServiceEvent(EventTypes.SERVICE_ERROR, {
         service: this.config.name,
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
       throw error;
@@ -351,7 +347,7 @@ export abstract class BaseService {
       } catch (error) {
         checks.kafka_consumer = {
           status: "error",
-          message: error.message,
+          message: error instanceof Error ? error.message : String(error),
           latency: Date.now() - start,
         };
       }
@@ -370,7 +366,7 @@ export abstract class BaseService {
       } catch (error) {
         checks.kafka_publisher = {
           status: "error",
-          message: error.message,
+          message: error instanceof Error ? error.message : String(error),
           latency: Date.now() - start,
         };
       }

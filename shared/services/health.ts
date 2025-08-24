@@ -3,7 +3,7 @@
  * Common health check implementations for services
  */
 
-import postgres from "postgres";
+import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 
 /**
  * Check PostgreSQL connectivity
@@ -16,13 +16,10 @@ export async function checkPostgres(connectionString: string): Promise<{
   const start = Date.now();
 
   try {
-    const sql = postgres(connectionString, {
-      max: 1,
-      timeout: 5,
-    });
-
-    await sql`SELECT 1 as check`;
-    await sql.end();
+    const client = new Client(connectionString);
+    await client.connect();
+    await client.queryArray("SELECT 1 as check");
+    await client.end();
 
     return {
       status: "ok",
@@ -32,7 +29,7 @@ export async function checkPostgres(connectionString: string): Promise<{
   } catch (error) {
     return {
       status: "error",
-      message: `PostgreSQL check failed: ${error.message}`,
+      message: `PostgreSQL check failed: ${error instanceof Error ? error.message : String(error)}`,
       latency: Date.now() - start,
     };
   }
@@ -64,7 +61,7 @@ export async function checkRedis(url: string): Promise<{
   } catch (error) {
     return {
       status: "error",
-      message: `Redis check failed: ${error.message}`,
+      message: `Redis check failed: ${error instanceof Error ? error.message : String(error)}`,
       latency: Date.now() - start,
     };
   }
@@ -106,7 +103,7 @@ export async function checkHttpEndpoint(url: string, expectedStatus = 200): Prom
   } catch (error) {
     return {
       status: "error",
-      message: `HTTP check failed: ${error.message}`,
+      message: `HTTP check failed: ${error instanceof Error ? error.message : String(error)}`,
       latency: Date.now() - start,
     };
   }
@@ -145,7 +142,7 @@ export async function checkKafka(brokers: string[]): Promise<{
   } catch (error) {
     return {
       status: "error",
-      message: `Kafka check failed: ${error.message}`,
+      message: `Kafka check failed: ${error instanceof Error ? error.message : String(error)}`,
       latency: Date.now() - start,
     };
   }
@@ -193,7 +190,7 @@ export async function checkDiskSpace(path = "/", thresholdPercent = 90): Promise
   } catch (error) {
     return {
       status: "error",
-      message: `Disk check failed: ${error.message}`,
+      message: `Disk check failed: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -228,7 +225,7 @@ export function checkMemory(thresholdPercent = 90): {
   } catch (error) {
     return {
       status: "error",
-      message: `Memory check failed: ${error.message}`,
+      message: `Memory check failed: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -283,7 +280,7 @@ export async function checkExternalApi(
   } catch (error) {
     return {
       status: "error",
-      message: `API check failed: ${error.message}`,
+      message: `API check failed: ${error instanceof Error ? error.message : String(error)}`,
       latency: Date.now() - start,
     };
   }
@@ -338,7 +335,7 @@ export class HealthCheckRunner {
       } catch (error) {
         results[name] = {
           status: "error",
-          message: `Check failed: ${error.message}`,
+          message: `Check failed: ${error instanceof Error ? error.message : String(error)}`,
         };
       }
     });
@@ -359,13 +356,13 @@ export class HealthCheckRunner {
   > {
     return Promise.race([
       this.runAll(),
-      new Promise<Record<string, {
-        status: "ok" | "error";
-        message?: string;
-        [key: string]: unknown;
-      }>>((_, reject) =>
-        setTimeout(() => reject(new Error("Health check timeout")), timeoutMs)
-      ),
+      new Promise<
+        Record<string, {
+          status: "ok" | "error";
+          message?: string;
+          [key: string]: unknown;
+        }>
+      >((_, reject) => setTimeout(() => reject(new Error("Health check timeout")), timeoutMs)),
     ]);
   }
 

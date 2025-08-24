@@ -5,7 +5,13 @@
       "Bash(export PATH=\"$HOME/.local/bin:$PATH\")",
       "Bash(mkdir:*)",
       "Bash(deno task:*)",
-      "Bash(deno check:*)"
+      "Bash(deno check:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh label:*)",
+      "Bash(gh api:*)",
+      "Bash(deno fmt:*)"
     ],
     "deny": [
       "Bash(python3 -m pytest tests/integration/test_event_flow.py -v)",

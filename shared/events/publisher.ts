@@ -402,7 +402,7 @@ export class ResilientCloudEventPublisher extends CloudEventPublisher {
   /**
    * Publish with circuit breaker and retry
    */
-  async publish<T>(
+  override async publish<T>(
     event: TypedCloudEvent<T>,
     options?: PublishOptions,
   ): Promise<RecordMetadata[]> {

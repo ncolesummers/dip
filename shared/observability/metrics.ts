@@ -180,7 +180,7 @@ export class Histogram extends Metric {
 // Summary metric (simplified percentile calculation)
 export class Summary extends Metric {
   private percentiles: number[];
-  private values: Map<string, number[]> = new Map();
+  private summaryValues: Map<string, number[]> = new Map();
   private windowSize: number;
 
   constructor(
@@ -198,11 +198,11 @@ export class Summary extends Metric {
   observe(labels: Labels = {}, value: number): void {
     const key = this.labelsToString(labels);
 
-    if (!this.values.has(key)) {
-      this.values.set(key, []);
+    if (!this.summaryValues.has(key)) {
+      this.summaryValues.set(key, []);
     }
 
-    const values = this.values.get(key)!;
+    const values = this.summaryValues.get(key)!;
     values.push(value);
 
     // Keep only recent values within window
@@ -223,7 +223,7 @@ export class Summary extends Metric {
       `# TYPE ${this.name} ${this.type}`,
     ];
 
-    for (const [labels, values] of this.values) {
+    for (const [labels, values] of this.summaryValues) {
       if (values.length === 0) continue;
 
       for (const percentile of this.percentiles) {

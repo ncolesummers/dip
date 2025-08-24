@@ -216,23 +216,23 @@ export class CloudEventConsumer {
   /**
    * Pause consumption
    */
-  pause(): void {
-    const assignments = this.consumer.assignment();
-    if (assignments && assignments.length > 0) {
-      this.consumer.pause(assignments);
-      console.log("Consumer paused");
-    }
+  async pause(): Promise<void> {
+    // Get current topic-partitions from consumer
+    const topics = this.options.topics;
+    const topicPartitions = topics.map((topic) => ({ topic }));
+    await this.consumer.pause(topicPartitions);
+    console.log("Consumer paused");
   }
 
   /**
    * Resume consumption
    */
-  resume(): void {
-    const assignments = this.consumer.assignment();
-    if (assignments && assignments.length > 0) {
-      this.consumer.resume(assignments);
-      console.log("Consumer resumed");
-    }
+  async resume(): Promise<void> {
+    // Get current topic-partitions from consumer
+    const topics = this.options.topics;
+    const topicPartitions = topics.map((topic) => ({ topic }));
+    await this.consumer.resume(topicPartitions);
+    console.log("Consumer resumed");
   }
 
   /**
@@ -376,7 +376,7 @@ export class BatchCloudEventConsumer extends CloudEventConsumer {
   /**
    * Stop consumer and process remaining batch
    */
-  async stop(): Promise<void> {
+  override async stop(): Promise<void> {
     if (this.batchTimer) {
       clearTimeout(this.batchTimer);
     }

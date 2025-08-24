@@ -148,7 +148,7 @@ export interface EventDefinition {
 /**
  * Event registry - documents all events in the system
  */
-export const EventRegistry: Record<EventType, EventDefinition> = {
+export const EventRegistry: Partial<Record<EventType, EventDefinition>> = {
   [EventTypes.TICKET_RECEIVED]: {
     type: EventTypes.TICKET_RECEIVED,
     source: EventSources.INGESTION_SERVICE,

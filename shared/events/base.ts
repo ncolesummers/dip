@@ -57,11 +57,11 @@ export class TypedCloudEvent<T = unknown> {
     const time = attributes.time || new Date().toISOString();
 
     const event: CloudEventV1<T> = {
+      ...attributes,
       specversion: "1.0",
       id,
       time,
-      ...attributes,
-    };
+    } as CloudEventV1<T>;
 
     return new TypedCloudEvent(event, schema);
   }
@@ -91,7 +91,7 @@ export class TypedCloudEvent<T = unknown> {
         this.schema.parse(data);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          throw new ValidationError("Data validation failed", error.errors.map(e => e.message));
+          throw new ValidationError("Data validation failed", error.errors.map((e) => e.message));
         }
         throw error;
       }
