@@ -4,9 +4,8 @@
  */
 
 import { Kafka, Producer, ProducerConfig, ProducerRecord, RecordMetadata } from "kafkajs";
-import { z } from "zod";
 import { TypedCloudEvent } from "./base.ts";
-import { EventSource, EventType } from "./types.ts";
+import { EventType } from "./types.ts";
 import { commonMetrics } from "@observability/metrics.ts";
 
 export interface PublisherOptions {
@@ -317,7 +316,7 @@ export class CloudEventPublisher {
   /**
    * Map compression type
    */
-  private mapCompression(compression?: string): any {
+  private mapCompression(compression?: string): number {
     switch (compression) {
       case "gzip":
         return 1;

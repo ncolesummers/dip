@@ -3,10 +3,10 @@
  * Provides type-safe event consumption with automatic validation
  */
 
-import { Consumer, ConsumerConfig, EachMessagePayload, Kafka, KafkaMessage } from "kafkajs";
+import { Consumer, ConsumerConfig, EachMessagePayload, Kafka } from "kafkajs";
 import { z } from "zod";
 import { TypedCloudEvent } from "./base.ts";
-import { EventSubscription, EventType } from "./types.ts";
+import { EventType } from "./types.ts";
 import { commonMetrics } from "@observability/metrics.ts";
 
 export interface ConsumerOptions {
@@ -118,7 +118,7 @@ export class CloudEventConsumer {
    * Handle incoming message
    */
   private async handleMessage(payload: EachMessagePayload): Promise<void> {
-    const { topic, partition, message } = payload;
+    const { topic, message } = payload;
     const startTime = Date.now();
 
     try {
@@ -216,7 +216,7 @@ export class CloudEventConsumer {
   /**
    * Pause consumption
    */
-  async pause(): Promise<void> {
+  pause(): void {
     const assignments = this.consumer.assignment();
     if (assignments && assignments.length > 0) {
       this.consumer.pause(assignments);
@@ -227,7 +227,7 @@ export class CloudEventConsumer {
   /**
    * Resume consumption
    */
-  async resume(): Promise<void> {
+  resume(): void {
     const assignments = this.consumer.assignment();
     if (assignments && assignments.length > 0) {
       this.consumer.resume(assignments);
@@ -252,7 +252,7 @@ export class CloudEventConsumer {
   /**
    * Get consumer metrics
    */
-  async getMetrics(): Promise<any> {
+  getMetrics(): unknown {
     return this.consumer.describeGroup();
   }
 

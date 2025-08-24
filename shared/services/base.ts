@@ -4,15 +4,12 @@
  */
 
 import { Handler, serve } from "@std/http";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
+import { Hono, Context } from "hono";
 import { CloudEventConsumer, CloudEventPublisher } from "@events/mod.ts";
 import { TypedCloudEvent } from "@events/base.ts";
-import { EventSources, EventType } from "@events/types.ts";
+import { EventType } from "@events/types.ts";
 import {
   commonMetrics,
-  defaultRegistry,
   metricsMiddleware,
   startMetricsServer,
 } from "@observability/metrics.ts";
@@ -76,18 +73,26 @@ export abstract class BaseService {
    */
   protected setupMiddleware(): void {
     // CORS
-    this.app.use(
-      "*",
-      cors({
-        origin: "*",
-        allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization"],
-      }),
-    );
+    this.app.use("*", async (c, next) => {
+      c.header("Access-Control-Allow-Origin", "*");
+      c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      
+      if (c.req.method === "OPTIONS") {
+        return c.text("", 204);
+      }
+      
+      await next();
+    });
 
     // Logging
     if (this.config.environment !== "test") {
-      this.app.use("*", logger());
+      this.app.use("*", async (c, next) => {
+        const start = Date.now();
+        await next();
+        const ms = Date.now() - start;
+        console.log(`${c.req.method} ${c.req.path} - ${c.res.status} ${ms}ms`);
+      });
     }
 
     // Metrics
@@ -179,7 +184,7 @@ export abstract class BaseService {
   /**
    * Initialize Kafka consumer if needed
    */
-  protected async initializeConsumer(topics: string[]): Promise<void> {
+  protected initializeConsumer(topics: string[]): void {
     const brokers = this.config.kafkaBrokers ||
       (Deno.env.get("KAFKA_BROKERS") || "localhost:9092").split(",");
 

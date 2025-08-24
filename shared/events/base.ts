@@ -3,7 +3,7 @@
  * Provides type-safe CloudEvents with automatic schema validation
  */
 
-import { CloudEvent, CloudEventV1, ValidationError } from "cloudevents";
+import { CloudEventV1, ValidationError } from "cloudevents";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 
@@ -47,7 +47,10 @@ export class TypedCloudEvent<T = unknown> {
    * Create a new TypedCloudEvent with validated data
    */
   static create<T>(
-    attributes: Omit<CloudEventV1<T>, "id" | "time" | "specversion">,
+    attributes: Omit<CloudEventV1<T>, "id" | "time" | "specversion"> & {
+      id?: string;
+      time?: string;
+    },
     schema?: z.ZodSchema<T>,
   ): TypedCloudEvent<T> {
     const id = attributes.id || nanoid();
@@ -55,9 +58,9 @@ export class TypedCloudEvent<T = unknown> {
 
     const event: CloudEventV1<T> = {
       specversion: "1.0",
-      ...attributes,
       id,
       time,
+      ...attributes,
     };
 
     return new TypedCloudEvent(event, schema);
@@ -88,7 +91,7 @@ export class TypedCloudEvent<T = unknown> {
         this.schema.parse(data);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          throw new ValidationError("Data validation failed", error.errors);
+          throw new ValidationError("Data validation failed", error.errors.map(e => e.message));
         }
         throw error;
       }
@@ -133,28 +136,28 @@ export class TypedCloudEvent<T = unknown> {
    * Set correlation ID for event chaining
    */
   setCorrelationId(correlationId: string): void {
-    (this.event as any).correlationid = correlationId;
+    (this.event as Record<string, unknown>).correlationid = correlationId;
   }
 
   /**
    * Get correlation ID
    */
   getCorrelationId(): string | undefined {
-    return (this.event as any).correlationid;
+    return (this.event as Record<string, unknown>).correlationid as string | undefined;
   }
 
   /**
    * Set causation ID (ID of the event that caused this one)
    */
   setCausationId(causationId: string): void {
-    (this.event as any).causationid = causationId;
+    (this.event as Record<string, unknown>).causationid = causationId;
   }
 
   /**
    * Get causation ID
    */
   getCausationId(): string | undefined {
-    return (this.event as any).causationid;
+    return (this.event as Record<string, unknown>).causationid as string | undefined;
   }
 
   /**
@@ -271,9 +274,9 @@ export class TypedCloudEvent<T = unknown> {
    * Add trace context for distributed tracing
    */
   addTraceContext(traceParent: string, traceState?: string): void {
-    (this.event as any).traceparent = traceParent;
+    (this.event as Record<string, unknown>).traceparent = traceParent;
     if (traceState) {
-      (this.event as any).tracestate = traceState;
+      (this.event as Record<string, unknown>).tracestate = traceState;
     }
   }
 
@@ -282,8 +285,8 @@ export class TypedCloudEvent<T = unknown> {
    */
   getTraceContext(): { traceParent?: string; traceState?: string } {
     return {
-      traceParent: (this.event as any).traceparent,
-      traceState: (this.event as any).tracestate,
+      traceParent: (this.event as Record<string, unknown>).traceparent as string | undefined,
+      traceState: (this.event as Record<string, unknown>).tracestate as string | undefined,
     };
   }
 }

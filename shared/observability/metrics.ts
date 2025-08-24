@@ -411,8 +411,9 @@ export async function startMetricsServer(port = 9090): Promise<void> {
 }
 
 // Middleware for Hono to track HTTP metrics
-export function metricsMiddleware() {
-  return async (c: any, next: any) => {
+// deno-lint-ignore no-explicit-any
+export function metricsMiddleware(): (c: any, next: any) => Promise<void> {
+  return async (c, next) => {
     const start = Date.now();
     const method = c.req.method;
     const route = c.req.routePath || c.req.path;
@@ -437,7 +438,11 @@ export function metricsMiddleware() {
 }
 
 // Helper to track event processing
-export function trackEventProcessing(eventType: string) {
+export function trackEventProcessing(eventType: string): {
+  start: () => () => void;
+  success: () => void;
+  failure: () => void;
+} {
   return {
     start(): () => void {
       const startTime = Date.now();

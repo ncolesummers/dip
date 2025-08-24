@@ -21,7 +21,7 @@ export async function checkPostgres(connectionString: string): Promise<{
       timeout: 5,
     });
 
-    const result = await sql`SELECT 1 as check`;
+    await sql`SELECT 1 as check`;
     await sql.end();
 
     return {
@@ -201,11 +201,11 @@ export async function checkDiskSpace(path = "/", thresholdPercent = 90): Promise
 /**
  * Check memory usage
  */
-export async function checkMemory(thresholdPercent = 90): Promise<{
+export function checkMemory(thresholdPercent = 90): {
   status: "ok" | "error";
   message?: string;
   usage?: number;
-}> {
+} {
   try {
     const memInfo = Deno.memoryUsage();
     const totalMemory = memInfo.rss;
@@ -298,7 +298,7 @@ export class HealthCheckRunner {
     () => Promise<{
       status: "ok" | "error";
       message?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }>
   > = new Map();
 
@@ -310,7 +310,7 @@ export class HealthCheckRunner {
     check: () => Promise<{
       status: "ok" | "error";
       message?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }>,
   ): void {
     this.checks.set(name, check);
@@ -323,10 +323,14 @@ export class HealthCheckRunner {
     Record<string, {
       status: "ok" | "error";
       message?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }>
   > {
-    const results: Record<string, any> = {};
+    const results: Record<string, {
+      status: "ok" | "error";
+      message?: string;
+      [key: string]: unknown;
+    }> = {};
 
     const promises = Array.from(this.checks.entries()).map(async ([name, check]) => {
       try {
@@ -346,16 +350,20 @@ export class HealthCheckRunner {
   /**
    * Run health checks with timeout
    */
-  async runWithTimeout(timeoutMs = 10000): Promise<
+  runWithTimeout(timeoutMs = 10000): Promise<
     Record<string, {
       status: "ok" | "error";
       message?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }>
   > {
     return Promise.race([
       this.runAll(),
-      new Promise<Record<string, any>>((_, reject) =>
+      new Promise<Record<string, {
+        status: "ok" | "error";
+        message?: string;
+        [key: string]: unknown;
+      }>>((_, reject) =>
         setTimeout(() => reject(new Error("Health check timeout")), timeoutMs)
       ),
     ]);

@@ -17,7 +17,8 @@
     "@std/log": "https://deno.land/std@0.208.0/log/mod.ts",
 
     "hono": "npm:hono@^3.11.0",
-    "hono/": "npm:hono@^3.11.0/",
+    "hono/cors": "npm:hono@^3.11.0/middleware/cors",
+    "hono/logger": "npm:hono@^3.11.0/middleware/logger",
     "zod": "npm:zod@^3.22.4",
     "cloudevents": "npm:cloudevents@^7.0.2",
     "kafkajs": "npm:kafkajs@^2.2.4",
@@ -45,7 +46,7 @@
     "pino-pretty": "npm:pino-pretty@^10.3.1",
 
     "ajv": "npm:ajv@^8.12.0",
-    "nanoid": "https://deno.land/x/nanoid@v3.0.0/mod.ts",
+    "nanoid": "https://esm.sh/nanoid@5.0.4",
     "retry": "npm:retry@^0.13.1",
     "p-queue": "npm:p-queue@^8.0.1",
     "p-retry": "npm:p-retry@^6.2.0",
