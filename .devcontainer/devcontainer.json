@@ -1,0 +1,135 @@
+{
+  "name": "DIP Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/base:jammy",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "DENO_DIR": "/workspace/.deno",
+    "DENO_INSTALL": "/home/vscode/.deno",
+    "PATH": "${containerEnv:PATH}:/home/vscode/.deno/bin"
+  },
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "postCreateCommand": "curl -fsSL https://deno.land/install.sh | sh && echo 'export DENO_INSTALL=\"/home/vscode/.deno\"' >> ~/.bashrc && echo 'export PATH=\"$DENO_INSTALL/bin:$PATH\"' >> ~/.bashrc && npm install -g @anthropic/claude-cli",
+  "postStartCommand": "deno cache --reload import_map.json",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "denoland.vscode-deno",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.vscode-typescript-next",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "streetsidesoftware.code-spell-checker",
+        "yzhang.markdown-all-in-one",
+        "bierner.markdown-mermaid",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        "donjayamanne.githistory",
+        "zxh404.vscode-proto3",
+        "ms-vscode-remote.remote-containers"
+      ],
+      "settings": {
+        "deno.enable": true,
+        "deno.lint": true,
+        "deno.unstable": true,
+        "deno.importMap": "./import_map.json",
+        "deno.config": "./deno.json",
+        "editor.defaultFormatter": "denoland.vscode-deno",
+        "[typescript]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "[javascriptreact]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll": true,
+          "source.organizeImports": true
+        },
+        "files.exclude": {
+          "**/.git": true,
+          "**/.DS_Store": true,
+          "**/node_modules": true,
+          "**/.deno": true,
+          "**/build": true,
+          "**/dist": true
+        },
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.env.linux": {
+          "DENO_INSTALL": "/home/vscode/.deno",
+          "PATH": "${env:PATH}:/home/vscode/.deno/bin"
+        }
+      }
+    }
+  },
+  "forwardPorts": [
+    8001,
+    8002,
+    8003,
+    8004,
+    8005,
+    9090,
+    9092,
+    5432,
+    6379
+  ],
+  "portsAttributes": {
+    "8001": {
+      "label": "Ingestion Service",
+      "onAutoForward": "notify"
+    },
+    "8002": {
+      "label": "Classifier Service",
+      "onAutoForward": "notify"
+    },
+    "8003": {
+      "label": "Routing Service",
+      "onAutoForward": "notify"
+    },
+    "8004": {
+      "label": "Response Service",
+      "onAutoForward": "notify"
+    },
+    "9090": {
+      "label": "Prometheus Metrics",
+      "onAutoForward": "notify"
+    },
+    "9092": {
+      "label": "Kafka",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    }
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+}

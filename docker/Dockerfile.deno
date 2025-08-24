@@ -1,0 +1,77 @@
+# Multi-stage build for Deno services
+FROM denoland/deno:alpine-1.39.4 AS base
+
+# Install necessary tools
+RUN apk add --no-cache \
+    curl \
+    bash \
+    git \
+    ca-certificates
+
+# Create app directory
+WORKDIR /app
+
+# Copy dependency files
+COPY deno.json import_map.json ./
+
+# Cache dependencies
+RUN deno cache --reload import_map.json
+
+# Development stage
+FROM base AS development
+
+# Copy all source files
+COPY . .
+
+# Expose common ports
+EXPOSE 8000-8010 9090
+
+# Set environment to development
+ENV DENO_ENV=development
+
+# Default command (override per service)
+CMD ["deno", "run", "--allow-all", "--watch", "main.ts"]
+
+# Builder stage for production
+FROM base AS builder
+
+# Copy all source files
+COPY . .
+
+# Run type checking
+RUN deno check **/*.ts
+
+# Run tests
+RUN deno test --allow-all --parallel
+
+# Production stage
+FROM denoland/deno:alpine-1.39.4 AS production
+
+# Install runtime dependencies only
+RUN apk add --no-cache ca-certificates
+
+# Create non-root user
+RUN addgroup -g 1001 -S deno && \
+    adduser -u 1001 -S deno -G deno
+
+# Create app directory
+WORKDIR /app
+
+# Copy application files
+COPY --from=builder --chown=deno:deno /app .
+
+# Switch to non-root user
+USER deno
+
+# Expose service port
+EXPOSE 8000
+
+# Set environment to production
+ENV DENO_ENV=production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD deno eval "fetch('http://localhost:8000/health').then(() => Deno.exit(0)).catch(() => Deno.exit(1))"
+
+# Default command (override per service with specific permissions)
+CMD ["deno", "run", "--allow-net", "--allow-env", "--allow-read", "main.ts"]

@@ -1,0 +1,70 @@
+{
+  "imports": {
+    "@std/": "https://deno.land/std@0.208.0/",
+    "@std/testing": "https://deno.land/std@0.208.0/testing/mod.ts",
+    "@std/assert": "https://deno.land/std@0.208.0/assert/mod.ts",
+    "@std/async": "https://deno.land/std@0.208.0/async/mod.ts",
+    "@std/datetime": "https://deno.land/std@0.208.0/datetime/mod.ts",
+    "@std/encoding": "https://deno.land/std@0.208.0/encoding/mod.ts",
+    "@std/fmt": "https://deno.land/std@0.208.0/fmt/mod.ts",
+    "@std/fs": "https://deno.land/std@0.208.0/fs/mod.ts",
+    "@std/http": "https://deno.land/std@0.208.0/http/mod.ts",
+    "@std/path": "https://deno.land/std@0.208.0/path/mod.ts",
+    "@std/uuid": "https://deno.land/std@0.208.0/uuid/mod.ts",
+    "@std/crypto": "https://deno.land/std@0.208.0/crypto/mod.ts",
+    "@std/dotenv": "https://deno.land/std@0.208.0/dotenv/mod.ts",
+    "@std/flags": "https://deno.land/std@0.208.0/flags/mod.ts",
+    "@std/log": "https://deno.land/std@0.208.0/log/mod.ts",
+
+    "hono": "npm:hono@^3.11.0",
+    "hono/": "npm:hono@^3.11.0/",
+    "zod": "npm:zod@^3.22.4",
+    "cloudevents": "npm:cloudevents@^7.0.2",
+    "kafkajs": "npm:kafkajs@^2.2.4",
+    "redis": "npm:redis@^4.6.11",
+    "postgres": "https://deno.land/x/postgres@v0.17.0/mod.ts",
+    "oak": "https://deno.land/x/oak@v12.6.1/mod.ts",
+
+    "@/": "./",
+    "@shared/": "./shared/",
+    "@events/": "./shared/events/",
+    "@schemas/": "./shared/schemas/",
+    "@services/": "./shared/services/",
+    "@observability/": "./shared/observability/",
+    "@utils/": "./shared/utils/",
+    "@config/": "./config/",
+    "@tests/": "./tests/",
+
+    "ollama": "npm:ollama@^0.4.9",
+    "openai": "npm:openai@^4.24.1",
+    "trpc": "npm:@trpc/server@^10.45.0",
+    "trpc-client": "npm:@trpc/client@^10.45.0",
+    "superjson": "npm:superjson@^2.2.1",
+
+    "pino": "npm:pino@^8.17.2",
+    "pino-pretty": "npm:pino-pretty@^10.3.1",
+
+    "ajv": "npm:ajv@^8.12.0",
+    "nanoid": "https://deno.land/x/nanoid@v3.0.0/mod.ts",
+    "retry": "npm:retry@^0.13.1",
+    "p-queue": "npm:p-queue@^8.0.1",
+    "p-retry": "npm:p-retry@^6.2.0",
+
+    "chalk": "npm:chalk@^5.3.0",
+    "cli-table3": "npm:cli-table3@^0.6.3",
+    "commander": "npm:commander@^11.1.0",
+    "inquirer": "npm:@inquirer/prompts@^3.3.0",
+    "ora": "npm:ora@^8.0.1",
+
+    "dotenv": "npm:dotenv@^16.3.1",
+    "envalid": "npm:envalid@^8.0.0"
+  },
+  "scopes": {
+    "./services/": {
+      "@base": "../shared/services/base.ts",
+      "@events": "../shared/events/mod.ts",
+      "@schemas": "../shared/schemas/mod.ts",
+      "@metrics": "../shared/observability/metrics.ts"
+    }
+  }
+}

@@ -9,6 +9,7 @@ A complete reimplementation of TIP using Deno, Hono, Zod, and CloudEvents, maint
 ## 🏗️ Technical Architecture
 
 ### Core Technology Stack
+
 - **Runtime**: Deno 2.x (native TypeScript, secure by default)
 - **Web Framework**: Hono (portable, ultrafast, works everywhere)
 - **Validation**: Zod (runtime validation with TypeScript inference)
@@ -21,6 +22,7 @@ A complete reimplementation of TIP using Deno, Hono, Zod, and CloudEvents, maint
 - **LLM**: Ollama (local) or OpenAI SDK
 
 ### Project Structure
+
 ```
 deno-tip/
 ├── .devcontainer/
@@ -104,12 +106,14 @@ deno-tip/
 ## 📝 Epic & User Stories
 
 ### EPIC-001: Core Infrastructure Setup
-**Business Value**: High  
+
+**Business Value**: High\
 **Target Release**: v0.1.0
 
 #### User Stories:
 
 **STORY-001: TypedCloudEvent Implementation**
+
 - As a developer, I want type-safe CloudEvents with Zod validation
 - **Acceptance Criteria**:
   - Given a Zod schema, when creating an event, then TypeScript infers the data type
@@ -118,6 +122,7 @@ deno-tip/
 - **Story Points**: 5
 
 **STORY-002: BaseService Abstract Class**
+
 - As a developer, I want a common service base class with health checks and graceful shutdown
 - **Acceptance Criteria**:
   - Given a service extends BaseService, when started, then it handles signals properly
@@ -126,6 +131,7 @@ deno-tip/
 - **Story Points**: 8
 
 **STORY-003: Kafka Integration Layer**
+
 - As a developer, I want abstracted Kafka consumer/publisher with CloudEvents
 - **Acceptance Criteria**:
   - Given a service subscribes to topics, when events arrive, then they're validated
@@ -134,6 +140,7 @@ deno-tip/
 - **Story Points**: 8
 
 **STORY-004: Devcontainer Setup**
+
 - As a developer, I want a complete dev environment with one command
 - **Acceptance Criteria**:
   - Given devcontainer starts, when complete, then Deno and Claude CLI are installed
@@ -142,12 +149,14 @@ deno-tip/
 - **Story Points**: 3
 
 ### EPIC-002: Service Migration
-**Business Value**: High  
+
+**Business Value**: High\
 **Target Release**: v0.2.0
 
 #### User Stories:
 
 **STORY-005: Ingestion Service with Hono**
+
 - As the system, I want to receive tickets via HTTP API and publish CloudEvents
 - **Acceptance Criteria**:
   - Given POST to /api/tickets, when valid data, then returns ticket ID
@@ -156,6 +165,7 @@ deno-tip/
 - **Story Points**: 5
 
 **STORY-006: Classifier Service**
+
 - As the system, I want to classify ticket intent using LLM
 - **Acceptance Criteria**:
   - Given ticket.received event, when consumed, then classifies intent
@@ -164,12 +174,14 @@ deno-tip/
 - **Story Points**: 8
 
 ### EPIC-003: Evaluation Framework
-**Business Value**: High  
+
+**Business Value**: High\
 **Target Release**: v0.3.0
 
 #### User Stories:
 
 **STORY-007: Evaluation Test Framework**
+
 - As a developer, I want comprehensive evaluation suites using Deno.test
 - **Acceptance Criteria**:
   - Given eval suite runs, when complete, then reports schema validation results
@@ -178,6 +190,7 @@ deno-tip/
 - **Story Points**: 8
 
 **STORY-008: Benchmark Suite**
+
 - As a developer, I want performance benchmarks using Deno.bench
 - **Acceptance Criteria**:
   - Given benchmark runs, when complete, then reports ops/sec for each service
@@ -190,17 +203,18 @@ deno-tip/
 ## 🧪 Evaluation Strategy
 
 ### Schema Validation Evals
+
 ```typescript
 // tests/evals/schema.eval.ts
 Deno.test("CloudEvent Schema Compliance", async (t) => {
   await t.step("validates required fields", () => {
     // Test CloudEvents spec compliance
   });
-  
+
   await t.step("validates Zod schema inference", () => {
     // Test TypeScript type inference
   });
-  
+
   await t.step("handles malformed events", () => {
     // Test error handling
   });
@@ -208,6 +222,7 @@ Deno.test("CloudEvent Schema Compliance", async (t) => {
 ```
 
 ### Performance Evals
+
 ```typescript
 // tests/evals/performance.eval.ts
 Deno.bench("Event Processing Throughput", () => {
@@ -220,6 +235,7 @@ Deno.bench("Zod Validation Performance", () => {
 ```
 
 ### Integration Evals
+
 - End-to-end event flow testing
 - Service communication validation
 - Error propagation testing
@@ -230,6 +246,7 @@ Deno.bench("Zod Validation Performance", () => {
 ## 🚀 Implementation Roadmap
 
 ### Phase 1: Foundation (Week 1)
+
 - [ ] Set up repository with Deno workspace
 - [ ] Create devcontainer configuration
 - [ ] Implement TypedCloudEvent with Zod
@@ -238,6 +255,7 @@ Deno.bench("Zod Validation Performance", () => {
 - [ ] Create service generation script
 
 ### Phase 2: Core Services (Week 2)
+
 - [ ] Migrate Ingestion service with Hono
 - [ ] Migrate Classifier service
 - [ ] Implement health check endpoints
@@ -245,6 +263,7 @@ Deno.bench("Zod Validation Performance", () => {
 - [ ] Create event monitoring tool
 
 ### Phase 3: Evaluation Framework (Week 3)
+
 - [ ] Create schema validation evals
 - [ ] Implement performance benchmarks
 - [ ] Add integration test suite
@@ -252,6 +271,7 @@ Deno.bench("Zod Validation Performance", () => {
 - [ ] Document evaluation patterns
 
 ### Phase 4: Advanced Services (Week 4)
+
 - [ ] Migrate routing service
 - [ ] Implement KB search with vector DB
 - [ ] Add auto-response service
@@ -263,6 +283,7 @@ Deno.bench("Zod Validation Performance", () => {
 ## 🎯 Success Metrics
 
 ### Performance Targets
+
 - **Startup Time**: <500ms per service (vs Python's 2-3s)
 - **Memory Usage**: <50MB per service at idle
 - **Event Throughput**: >1000 events/second per service
@@ -270,6 +291,7 @@ Deno.bench("Zod Validation Performance", () => {
 - **Type Safety**: 100% type coverage, zero `any` types
 
 ### Quality Metrics
+
 - **Test Coverage**: >80% for all services
 - **Eval Pass Rate**: 100% for schema validation
 - **Documentation**: Every service has README with examples
@@ -335,6 +357,7 @@ deno run --allow-all scripts/generate-service.ts --name routing
 ## 📊 Architecture Decisions
 
 ### Why Deno?
+
 - **Native TypeScript**: No compilation step, direct execution
 - **Built-in tooling**: Testing, formatting, linting, benchmarking included
 - **Security**: Explicit permissions model
@@ -342,6 +365,7 @@ deno run --allow-all scripts/generate-service.ts --name routing
 - **Performance**: V8 engine with Rust-based runtime
 
 ### Why Hono?
+
 - **Portability**: Works on Deno, Node.js, Bun, Cloudflare Workers
 - **Performance**: One of the fastest web frameworks
 - **TypeScript-first**: Excellent type inference
@@ -349,6 +373,7 @@ deno run --allow-all scripts/generate-service.ts --name routing
 - **Simple**: Express-like API with modern features
 
 ### Why Zod?
+
 - **Type inference**: Schemas generate TypeScript types automatically
 - **Composability**: Build complex schemas from simple ones
 - **Transformations**: Parse and transform data in one step
@@ -356,6 +381,7 @@ deno run --allow-all scripts/generate-service.ts --name routing
 - **Performance**: Faster than alternatives for most use cases
 
 ### Why CloudEvents?
+
 - **Standardization**: Industry-standard event format
 - **Interoperability**: Works across different systems
 - **Metadata**: Built-in correlation, causation, and tracing
@@ -367,12 +393,14 @@ deno run --allow-all scripts/generate-service.ts --name routing
 ## 🔄 Migration Strategy from Python/Pydantic
 
 ### Phase 1: Core Patterns
+
 1. **TypedCloudEvent[T]** → **TypedCloudEvent<T>** with Zod
 2. **Pydantic BaseModel** → **Zod schemas** with inference
 3. **BaseService** → **Abstract class** with similar interface
 4. **structlog** → **Deno's console** with structured output
 
 ### Phase 2: Service-by-Service
+
 1. Start with stateless services (Ingestion, Classifier)
 2. Maintain same event contracts
 3. Run Python and Deno services side-by-side
@@ -380,6 +408,7 @@ deno run --allow-all scripts/generate-service.ts --name routing
 5. Deprecate Python services
 
 ### Phase 3: Advanced Features
+
 1. Add tRPC for internal APIs
 2. Implement distributed tracing
 3. Add performance monitoring
@@ -390,6 +419,7 @@ deno run --allow-all scripts/generate-service.ts --name routing
 ## 🧑‍💻 Developer Guidelines
 
 ### Code Style
+
 ```typescript
 // Use explicit types for function parameters
 function processTicket(ticket: TicketSchema): Promise<void> {
@@ -408,6 +438,7 @@ type Ticket = z.infer<typeof TicketSchema>;
 ```
 
 ### Service Structure
+
 ```typescript
 // services/ingestion/service.ts
 export class IngestionService extends BaseService {
@@ -419,6 +450,7 @@ export class IngestionService extends BaseService {
 ```
 
 ### Testing Patterns
+
 ```typescript
 // Unit test
 Deno.test("validates ticket data", () => {
@@ -446,6 +478,7 @@ Deno.test("Ingestion Service Eval", async (t) => {
 ## 📈 Monitoring & Observability
 
 ### Metrics to Track
+
 - **Service Health**: Uptime, restart count
 - **Event Metrics**: Events processed, failed, retried
 - **Performance**: Latency p50/p95/p99, throughput
@@ -453,6 +486,7 @@ Deno.test("Ingestion Service Eval", async (t) => {
 - **Business Metrics**: Tickets processed, classification accuracy
 
 ### Logging Strategy
+
 ```typescript
 // Structured logging
 console.log(JSON.stringify({
@@ -461,11 +495,12 @@ console.log(JSON.stringify({
   event: "ticket.received",
   correlationId: "123",
   timestamp: new Date().toISOString(),
-  data: { ticketId: "TKT-123456" }
+  data: { ticketId: "TKT-123456" },
 }));
 ```
 
 ### Health Checks
+
 ```typescript
 // GET /health
 {
@@ -485,6 +520,7 @@ console.log(JSON.stringify({
 ## 🔐 Security Considerations
 
 ### Deno Permissions
+
 ```bash
 # Minimal permissions per service
 --allow-net=kafka:9092,postgres:5432
@@ -493,12 +529,14 @@ console.log(JSON.stringify({
 ```
 
 ### Input Validation
+
 - All external input validated with Zod
 - CloudEvents signature verification
 - Rate limiting on HTTP endpoints
 - SQL injection prevention with parameterized queries
 
 ### Secrets Management
+
 - Environment variables for local development
 - Docker secrets for container deployment
 - Consider HashiCorp Vault for production
@@ -508,6 +546,7 @@ console.log(JSON.stringify({
 ## 📖 Documentation Requirements
 
 ### Per Service
+
 - README with purpose and API
 - OpenAPI spec for HTTP endpoints
 - Event contracts (subscriptions/publications)
@@ -515,6 +554,7 @@ console.log(JSON.stringify({
 - Deployment instructions
 
 ### Project Level
+
 - Architecture overview
 - Event flow diagrams
 - Development guide
@@ -526,17 +566,20 @@ console.log(JSON.stringify({
 ## 🎓 Learning Resources
 
 ### Deno
+
 - [Deno Manual](https://deno.land/manual)
 - [Deno by Example](https://examples.deno.land)
 - [Deno Deploy Documentation](https://deno.com/deploy/docs)
 
 ### Libraries
+
 - [Hono Documentation](https://hono.dev)
 - [Zod Documentation](https://zod.dev)
 - [CloudEvents Spec](https://cloudevents.io)
 - [tRPC Documentation](https://trpc.io)
 
 ### Patterns
+
 - [Event-Driven Architecture](https://martinfowler.com/articles/201701-event-driven.html)
 - [Domain-Driven Design](https://martinfowler.com/tags/domain%20driven%20design.html)
 - [Microservices Patterns](https://microservices.io/patterns/)
@@ -546,6 +589,7 @@ console.log(JSON.stringify({
 ## 🚦 Go/No-Go Criteria for Production
 
 ### Must Have
+
 - [ ] All services migrated and tested
 - [ ] 100% eval suite passing
 - [ ] Performance meets or exceeds Python baseline
@@ -553,6 +597,7 @@ console.log(JSON.stringify({
 - [ ] Comprehensive documentation
 
 ### Should Have
+
 - [ ] Distributed tracing implemented
 - [ ] Prometheus metrics exported
 - [ ] Grafana dashboards created
@@ -560,6 +605,7 @@ console.log(JSON.stringify({
 - [ ] Load testing completed
 
 ### Nice to Have
+
 - [ ] Deno Deploy compatibility
 - [ ] WebAssembly modules for hot paths
 - [ ] GraphQL API gateway
@@ -570,20 +616,23 @@ console.log(JSON.stringify({
 ## 📞 Support & Resources
 
 ### Team Contacts
+
 - **Technical Lead**: [Your Name]
 - **DevOps**: [DevOps Contact]
 - **Product Owner**: [PO Contact]
 
 ### Communication Channels
+
 - **Slack**: #deno-migration
 - **GitHub**: [Repository URL]
 - **Documentation**: [Wiki URL]
 
 ### Regular Meetings
+
 - **Daily Standup**: 9:00 AM
 - **Sprint Planning**: Mondays 10:00 AM
 - **Retrospective**: Fridays 3:00 PM
 
 ---
 
-*This document is a living artifact and will be updated as the project evolves.*
+_This document is a living artifact and will be updated as the project evolves._

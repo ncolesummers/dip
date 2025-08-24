@@ -1,0 +1,78 @@
+{
+  "$schema": "https://deno.land/x/deno/cli/schemas/config-file.v1.json",
+  "imports": "./import_map.json",
+  "tasks": {
+    "dev": "deno run --watch --allow-net --allow-env --allow-read --allow-write --allow-run ./scripts/dev.ts",
+    "dev:ingestion": "deno run --watch --allow-net --allow-env --allow-read services/ingestion/main.ts",
+    "dev:classifier": "deno run --watch --allow-net --allow-env --allow-read services/classifier/main.ts",
+    "dev:routing": "deno run --watch --allow-net --allow-env --allow-read services/routing/main.ts",
+    "dev:response": "deno run --watch --allow-net --allow-env --allow-read services/response/main.ts",
+    "test": "deno test --allow-all --parallel",
+    "test:unit": "deno test --allow-all tests/unit/",
+    "test:integration": "deno test --allow-all tests/integration/",
+    "test:evals": "deno test --allow-all tests/evals/",
+    "bench": "deno bench --allow-all",
+    "check": "deno check **/*.ts",
+    "fmt": "deno fmt",
+    "fmt:check": "deno fmt --check",
+    "lint": "deno lint",
+    "cache": "deno cache --reload **/*.ts",
+    "compile:ingestion": "deno compile --allow-net --allow-env --allow-read --output=build/ingestion services/ingestion/main.ts",
+    "generate:service": "deno run --allow-all scripts/generate-service.ts",
+    "monitor:events": "deno run --allow-net --allow-env scripts/event-monitor.ts",
+    "metrics:server": "deno run --allow-net shared/observability/metrics.ts"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowJs": false,
+    "checkJs": false
+  },
+  "fmt": {
+    "files": {
+      "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.md"],
+      "exclude": ["node_modules", "build", ".deno", "coverage"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 100,
+      "indentWidth": 2,
+      "singleQuote": false,
+      "proseWrap": "preserve"
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["**/*.ts", "**/*.tsx"],
+      "exclude": ["node_modules", "build", ".deno", "coverage"]
+    },
+    "rules": {
+      "tags": ["recommended"],
+      "include": [
+        "no-explicit-any",
+        "no-unused-vars",
+        "explicit-function-return-type"
+      ],
+      "exclude": ["no-console"]
+    }
+  },
+  "test": {
+    "files": {
+      "include": ["tests/**/*.test.ts", "**/*.test.ts"],
+      "exclude": ["node_modules", "build"]
+    }
+  },
+  "bench": {
+    "files": {
+      "include": ["tests/**/*.bench.ts", "**/*.bench.ts"],
+      "exclude": ["node_modules", "build"]
+    }
+  },
+  "unstable": ["kv", "temporal", "cron", "broadcast-channel"],
+  "lock": false,
+  "nodeModulesDir": false
+}
