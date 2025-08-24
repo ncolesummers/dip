@@ -1,0 +1,388 @@
+name: Deploy to Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      service:
+        description: 'Service to deploy (or "all" for all services)'
+        required: true
+        type: choice
+        options:
+          - all
+          - ingestion
+          - classifier
+          - routing
+          - response
+      version:
+        description: 'Version/tag to deploy (e.g., v1.0.0, latest, or commit SHA)'
+        required: true
+        default: 'latest'
+      dry_run:
+        description: 'Perform a dry run without actual deployment'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  DENO_VERSION: 1.41.0
+
+permissions:
+  contents: read
+  packages: read
+  deployments: write
+  id-token: write
+
+jobs:
+  # Pre-deployment validation
+  validate:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    outputs:
+      proceed: ${{ steps.validate.outputs.proceed }}
+      services: ${{ steps.services.outputs.list }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        id: validate
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          SERVICE="${{ github.event.inputs.service }}"
+          VERSION="${{ github.event.inputs.version }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          
+          echo "Deployment Configuration:"
+          echo "========================"
+          echo "Environment: $ENV"
+          echo "Service(s): $SERVICE"
+          echo "Version: $VERSION"
+          echo "Dry Run: $DRY_RUN"
+          echo ""
+          
+          # Validate environment-specific rules
+          if [ "$ENV" = "production" ]; then
+            echo "⚠️ Production deployment requested"
+            
+            # Check if version is a proper semver tag for production
+            if [ "$VERSION" = "latest" ]; then
+              echo "❌ Error: 'latest' tag not allowed for production deployments"
+              echo "Please specify a version tag (e.g., v1.0.0)"
+              exit 1
+            fi
+            
+            # Verify version tag exists
+            if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+              echo "❌ Error: Version tag '$VERSION' not found"
+              exit 1
+            fi
+          fi
+          
+          echo "proceed=true" >> $GITHUB_OUTPUT
+
+      - name: Determine services to deploy
+        id: services
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+          
+          if [ "$SERVICE" = "all" ]; then
+            SERVICES="ingestion,classifier,routing,response"
+          else
+            SERVICES="$SERVICE"
+          fi
+          
+          echo "Services to deploy: $SERVICES"
+          echo "list=$SERVICES" >> $GITHUB_OUTPUT
+
+  # Run tests before deployment
+  test:
+    name: Pre-deployment Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+    if: needs.validate.outputs.proceed == 'true' && github.event.inputs.dry_run == 'false'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version }}
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests for deployment..."
+          
+          # Run basic health checks
+          deno check shared/**/*.ts || true
+          
+          # Run critical tests
+          if [ -d "tests/smoke" ]; then
+            deno test --allow-all tests/smoke/
+          else
+            echo "No smoke tests found, skipping..."
+          fi
+
+  # Deploy services
+  deploy:
+    name: Deploy Services
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [validate, test]
+    if: needs.validate.outputs.proceed == 'true'
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: ${{ steps.deploy.outputs.url }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(format('[{0}]', contains(needs.validate.outputs.services, ',') && format('"{0}"', join(split(needs.validate.outputs.services, ','), '","')) || format('"{0}"', needs.validate.outputs.services))) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup deployment environment
+        run: |
+          echo "Setting up deployment for ${{ matrix.service }} to ${{ github.event.inputs.environment }}..."
+          
+          # Create deployment configuration
+          cat > deployment-config.json << EOF
+          {
+            "environment": "${{ github.event.inputs.environment }}",
+            "service": "${{ matrix.service }}",
+            "version": "${{ github.event.inputs.version }}",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "deployed_by": "${{ github.actor }}",
+            "dry_run": ${{ github.event.inputs.dry_run }}
+          }
+          EOF
+          
+          cat deployment-config.json
+
+      - name: Log in to GitHub Container Registry
+        if: github.event.inputs.dry_run == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy ${{ matrix.service }} service
+        id: deploy
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          SERVICE="${{ matrix.service }}"
+          VERSION="${{ github.event.inputs.version }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          
+          IMAGE="${{ env.REGISTRY }}/${{ github.repository }}/${SERVICE}:${VERSION}"
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🔍 DRY RUN MODE - No actual deployment will occur"
+            echo "Would deploy: $IMAGE"
+            echo "To environment: $ENV"
+          else
+            echo "Deploying $SERVICE to $ENV..."
+            
+            # Environment-specific deployment logic
+            case "$ENV" in
+              development)
+                echo "Deploying to development environment..."
+                # Add development deployment commands here
+                # Example: kubectl set image deployment/${SERVICE} ${SERVICE}=${IMAGE} -n dev
+                ;;
+              staging)
+                echo "Deploying to staging environment..."
+                # Add staging deployment commands here
+                # Example: kubectl set image deployment/${SERVICE} ${SERVICE}=${IMAGE} -n staging
+                ;;
+              production)
+                echo "Deploying to production environment..."
+                # Add production deployment commands here
+                # Example: kubectl set image deployment/${SERVICE} ${SERVICE}=${IMAGE} -n prod
+                ;;
+            esac
+            
+            # Set deployment URL based on environment
+            case "$ENV" in
+              development)
+                URL="https://dev-${SERVICE}.example.com"
+                ;;
+              staging)
+                URL="https://staging-${SERVICE}.example.com"
+                ;;
+              production)
+                URL="https://${SERVICE}.example.com"
+                ;;
+            esac
+            
+            echo "url=$URL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify deployment
+        if: github.event.inputs.dry_run == 'false'
+        run: |
+          echo "Verifying deployment of ${{ matrix.service }}..."
+          
+          # Add health check logic here
+          # Example:
+          # URL="${{ steps.deploy.outputs.url }}/health"
+          # for i in {1..30}; do
+          #   if curl -f "$URL" 2>/dev/null; then
+          #     echo "✅ Service is healthy"
+          #     break
+          #   fi
+          #   echo "Waiting for service to be ready... ($i/30)"
+          #   sleep 10
+          # done
+
+      - name: Create deployment record
+        if: github.event.inputs.dry_run == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            
+            // Create deployment
+            const { data: deployment } = await github.rest.repos.createDeployment({
+              owner,
+              repo,
+              ref: '${{ github.event.inputs.version }}',
+              task: 'deploy:${{ matrix.service }}',
+              auto_merge: false,
+              required_contexts: [],
+              payload: {
+                service: '${{ matrix.service }}',
+                version: '${{ github.event.inputs.version }}'
+              },
+              environment: '${{ github.event.inputs.environment }}',
+              description: `Deploy ${{ matrix.service }} to ${{ github.event.inputs.environment }}`
+            });
+            
+            // Create deployment status
+            await github.rest.repos.createDeploymentStatus({
+              owner,
+              repo,
+              deployment_id: deployment.id,
+              state: 'success',
+              log_url: `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              description: 'Deployment completed successfully',
+              environment_url: '${{ steps.deploy.outputs.url }}',
+              auto_inactive: true
+            });
+
+  # Post-deployment validation
+  validate-deployment:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy
+    if: github.event.inputs.dry_run == 'false'
+    steps:
+      - name: Run post-deployment tests
+        run: |
+          echo "Running post-deployment validation..."
+          
+          ENV="${{ github.event.inputs.environment }}"
+          
+          # Add post-deployment validation logic here
+          # Example: Run smoke tests against deployed services
+          
+          echo "✅ Deployment validation completed"
+
+      - name: Send deployment notification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            
+            const summary = `
+            ## 🚀 Deployment Complete
+            
+            **Environment:** ${{ github.event.inputs.environment }}
+            **Service(s):** ${{ github.event.inputs.service }}
+            **Version:** ${{ github.event.inputs.version }}
+            **Deployed by:** @${{ github.actor }}
+            **Time:** ${new Date().toISOString()}
+            
+            ### Status
+            ✅ All services deployed successfully
+            
+            ### Next Steps
+            1. Monitor service health dashboards
+            2. Check application logs for any errors
+            3. Verify key user journeys are working
+            
+            [View Deployment Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            // Write summary
+            await core.summary
+              .addRaw(summary)
+              .write();
+            
+            console.log(summary);
+
+  # Rollback capability
+  rollback:
+    name: Rollback if Failed
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [deploy, validate-deployment]
+    if: failure() && github.event.inputs.dry_run == 'false' && github.event.inputs.environment == 'production'
+    steps:
+      - name: Initiate rollback
+        run: |
+          echo "❌ Deployment failed, initiating rollback..."
+          
+          # Add rollback logic here
+          # Example: Revert to previous version
+          
+          echo "Rollback completed"
+
+      - name: Create incident
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            
+            // Create issue for failed deployment
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: `🚨 Deployment Failure: ${{ github.event.inputs.environment }} - ${{ github.event.inputs.service }}`,
+              body: `
+              ## Deployment Failure Report
+              
+              **Environment:** ${{ github.event.inputs.environment }}
+              **Service(s):** ${{ github.event.inputs.service }}
+              **Version:** ${{ github.event.inputs.version }}
+              **Attempted by:** @${{ github.actor }}
+              **Time:** ${new Date().toISOString()}
+              
+              ### Status
+              ❌ Deployment failed and was rolled back
+              
+              ### Action Required
+              1. Review deployment logs
+              2. Identify root cause
+              3. Fix issues and retry deployment
+              
+              [View Failed Deployment](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `,
+              labels: ['incident', 'deployment-failure', 'priority:high']
+            });

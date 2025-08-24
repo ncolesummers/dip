@@ -1,0 +1,111 @@
+# Configuration for GitHub labeler action
+# This file defines which labels to apply based on file paths
+
+# Component labels
+component:events:
+  - changed-files:
+    - any-glob-to-any-file:
+      - shared/events/**/*
+      - shared/events/*
+
+component:schemas:
+  - changed-files:
+    - any-glob-to-any-file:
+      - shared/schemas/**/*
+      - shared/schemas/*
+
+component:observability:
+  - changed-files:
+    - any-glob-to-any-file:
+      - shared/observability/**/*
+      - shared/observability/*
+
+component:ingestion:
+  - changed-files:
+    - any-glob-to-any-file:
+      - services/ingestion/**/*
+      - services/ingestion/*
+
+component:classifier:
+  - changed-files:
+    - any-glob-to-any-file:
+      - services/classifier/**/*
+      - services/classifier/*
+
+component:routing:
+  - changed-files:
+    - any-glob-to-any-file:
+      - services/routing/**/*
+      - services/routing/*
+
+component:response:
+  - changed-files:
+    - any-glob-to-any-file:
+      - services/response/**/*
+      - services/response/*
+
+# Infrastructure labels
+ci/cd:
+  - changed-files:
+    - any-glob-to-any-file:
+      - .github/**/*
+      - .github/*
+
+docker:
+  - changed-files:
+    - any-glob-to-any-file:
+      - docker/**/*
+      - docker/*
+      - '**/Dockerfile*'
+      - docker-compose*.yml
+      - .dockerignore
+
+kubernetes:
+  - changed-files:
+    - any-glob-to-any-file:
+      - k8s/**/*
+      - k8s/*
+      - '**/*.yaml'
+      - '**/*.yml'
+
+# Code type labels
+testing:
+  - changed-files:
+    - any-glob-to-any-file:
+      - tests/**/*
+      - tests/*
+      - '**/*.test.ts'
+      - '**/*.bench.ts'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - docs/**/*
+      - docs/*
+      - '**/*.md'
+      - README.md
+      - CONTRIBUTING.md
+      - CODE_OF_CONDUCT.md
+
+configuration:
+  - changed-files:
+    - any-glob-to-any-file:
+      - deno.json
+      - deno.lock
+      - tsconfig.json
+      - .env*
+      - config/**/*
+
+scripts:
+  - changed-files:
+    - any-glob-to-any-file:
+      - scripts/**/*
+      - scripts/*
+
+# Dependencies
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - deno.json
+      - deno.lock
+      - import_map.json

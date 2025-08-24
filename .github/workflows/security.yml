@@ -1,0 +1,449 @@
+name: Security Scanning
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - dependencies
+          - docker
+          - secrets
+          - sast
+  push:
+    branches: [main]
+    paths:
+      - 'deno.json'
+      - 'deno.lock'
+      - 'docker/**'
+      - '.github/workflows/security.yml'
+
+env:
+  DENO_VERSION: 1.41.0
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  # Dependency vulnerability scanning
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.deno
+            ~/.cache/deno
+          key: ${{ runner.os }}-deno-security-${{ hashFiles('deno.json', 'deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-security-
+            ${{ runner.os }}-deno-
+
+      - name: Check for outdated dependencies
+        id: outdated
+        run: |
+          echo "## Checking for outdated dependencies..."
+          
+          # Extract dependencies from deno.json
+          if [ -f "deno.json" ]; then
+            echo "### NPM Dependencies"
+            cat deno.json | jq -r '.imports | to_entries[] | select(.value | startswith("npm:")) | "\(.key): \(.value)"' | while read -r line; do
+              pkg=$(echo "$line" | sed 's/.*npm://' | cut -d'@' -f1)
+              current_version=$(echo "$line" | sed 's/.*@//' | cut -d'/' -f1)
+              echo "- $pkg: $current_version"
+            done
+            
+            echo ""
+            echo "### Deno Dependencies"
+            cat deno.json | jq -r '.imports | to_entries[] | select(.value | startswith("https://deno.land")) | "\(.key): \(.value)"' | while read -r line; do
+              echo "- $line"
+            done
+          fi
+
+      - name: Scan for known vulnerabilities
+        id: vuln_scan
+        run: |
+          echo "## Scanning for known vulnerabilities..."
+          
+          # Create a report file
+          REPORT_FILE="security-report.md"
+          
+          {
+            echo "# Security Vulnerability Report"
+            echo ""
+            echo "**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+            echo "**Branch:** ${GITHUB_REF#refs/heads/}"
+            echo "**Commit:** ${GITHUB_SHA}"
+            echo ""
+            echo "## Dependency Analysis"
+            echo ""
+          } > "$REPORT_FILE"
+          
+          # Check NPM dependencies for vulnerabilities
+          echo "### Checking NPM dependencies..."
+          cat deno.json | jq -r '.imports | to_entries[] | select(.value | startswith("npm:")) | .value' | while read -r dep; do
+            pkg_name=$(echo "$dep" | sed 's/npm://' | sed 's/@.*//')
+            pkg_version=$(echo "$dep" | sed 's/.*@//' | sed 's/\/.*//')
+            
+            echo "Checking $pkg_name@$pkg_version..."
+            
+            # Use npm audit API (simplified check)
+            if curl -s "https://registry.npmjs.org/-/npm/v1/security/advisories/search?package=$pkg_name" | grep -q "\"total\":0"; then
+              echo "✅ $pkg_name@$pkg_version - No known vulnerabilities" >> "$REPORT_FILE"
+            else
+              echo "⚠️ $pkg_name@$pkg_version - Potential vulnerabilities found (manual review needed)" >> "$REPORT_FILE"
+            fi
+          done
+          
+          # Check for common security issues in code
+          echo ""
+          echo "## Code Security Analysis" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          
+          # Check for hardcoded secrets patterns
+          echo "### Checking for potential hardcoded secrets..."
+          PATTERNS=(
+            "password.*=.*['\"]"
+            "api[_-]?key.*=.*['\"]"
+            "secret.*=.*['\"]"
+            "token.*=.*['\"]"
+            "private[_-]?key"
+          )
+          
+          for pattern in "${PATTERNS[@]}"; do
+            if grep -r -i "$pattern" --include="*.ts" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git . 2>/dev/null; then
+              echo "⚠️ Found potential hardcoded secrets matching pattern: $pattern" >> "$REPORT_FILE"
+            fi
+          done
+          
+          # Output report
+          cat "$REPORT_FILE"
+          
+          # Save report as artifact
+          echo "report_path=$REPORT_FILE" >> $GITHUB_OUTPUT
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report-dependencies
+          path: security-report.md
+          retention-days: 30
+
+  # Docker image vulnerability scanning
+  docker-scan:
+    name: Docker Image Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'docker'
+    strategy:
+      matrix:
+        service: [ingestion, classifier, routing, response]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Check if Dockerfile exists
+        id: check_dockerfile
+        run: |
+          if [ -f "docker/Dockerfile.${{ matrix.service }}" ] || [ -f "docker/Dockerfile.deno" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create test Dockerfile if needed
+        if: steps.check_dockerfile.outputs.exists == 'false'
+        run: |
+          mkdir -p docker
+          cat > docker/Dockerfile.${{ matrix.service }} << 'EOF'
+          FROM denoland/deno:1.41.0
+          
+          WORKDIR /app
+          
+          COPY . .
+          
+          RUN deno cache --reload shared/**/*.ts || true
+          
+          USER deno
+          
+          CMD ["deno", "run", "--allow-net", "--allow-env", "services/${{ matrix.service }}/main.ts"]
+          EOF
+
+      - name: Build Docker image for scanning
+        run: |
+          DOCKERFILE="docker/Dockerfile.${{ matrix.service }}"
+          if [ ! -f "$DOCKERFILE" ]; then
+            DOCKERFILE="docker/Dockerfile.deno"
+          fi
+          
+          docker build -f "$DOCKERFILE" -t ${{ matrix.service }}:scan .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ matrix.service }}:scan
+          format: 'sarif'
+          output: 'trivy-${{ matrix.service }}.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.service }}.sarif'
+          category: 'docker-${{ matrix.service }}'
+
+      - name: Generate human-readable report
+        if: always()
+        run: |
+          docker run --rm -v "$PWD:/app" aquasec/trivy:latest image \
+            --format table \
+            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --output /app/trivy-report-${{ matrix.service }}.txt \
+            ${{ matrix.service }}:scan || true
+          
+          if [ -f "trivy-report-${{ matrix.service }}.txt" ]; then
+            cat trivy-report-${{ matrix.service }}.txt
+          fi
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-scan-${{ matrix.service }}
+          path: |
+            trivy-${{ matrix.service }}.sarif
+            trivy-report-${{ matrix.service }}.txt
+          retention-days: 30
+
+  # Secret scanning
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'secrets'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: TruffleHog OSS scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # Static Application Security Testing (SAST)
+  sast-scan:
+    name: SAST Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'sast'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/typescript
+            p/javascript
+            p/owasp-top-ten
+            p/r2c-security-audit
+          generateSarif: true
+
+      - name: Upload Semgrep results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: sast-semgrep
+
+      - name: Custom security checks
+        run: |
+          echo "## Running custom security checks..."
+          
+          # Check for unsafe Deno permissions
+          echo "### Checking for unsafe Deno permissions..."
+          if grep -r "allow-all" --include="*.ts" --include="*.js" --exclude-dir=tests .; then
+            echo "⚠️ Warning: Found usage of --allow-all flag (should be avoided in production)"
+          fi
+          
+          # Check for eval() usage
+          echo "### Checking for eval() usage..."
+          if grep -r "eval(" --include="*.ts" --include="*.js" .; then
+            echo "⚠️ Warning: Found eval() usage (potential security risk)"
+          fi
+          
+          # Check for unsafe regular expressions
+          echo "### Checking for potentially unsafe regular expressions..."
+          if grep -r "new RegExp(" --include="*.ts" --include="*.js" .; then
+            echo "⚠️ Warning: Found dynamic RegExp construction (check for ReDoS vulnerabilities)"
+          fi
+          
+          # Check for SQL injection risks
+          echo "### Checking for potential SQL injection risks..."
+          if grep -r "query.*\${" --include="*.ts" --include="*.js" .; then
+            echo "⚠️ Warning: Found potential SQL injection risk (use parameterized queries)"
+          fi
+
+  # Security report summary
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [dependency-scan, docker-scan, secret-scan, sast-scan]
+    if: always()
+    steps:
+      - name: Generate security summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run_id = context.runId;
+            
+            // Collect job results
+            const jobs = {
+              'Dependency Scan': '${{ needs.dependency-scan.result }}',
+              'Docker Scan': '${{ needs.docker-scan.result }}',
+              'Secret Scan': '${{ needs.secret-scan.result }}',
+              'SAST Scan': '${{ needs.sast-scan.result }}'
+            };
+            
+            // Build summary
+            let summary = '# 🔒 Security Scan Summary\n\n';
+            summary += `**Workflow Run:** [#${run_id}](${context.serverUrl}/${owner}/${repo}/actions/runs/${run_id})\n`;
+            summary += `**Date:** ${new Date().toISOString()}\n`;
+            summary += `**Triggered by:** ${context.eventName}\n\n`;
+            
+            summary += '## Scan Results\n\n';
+            summary += '| Scan Type | Status |\n';
+            summary += '|-----------|--------|\n';
+            
+            let hasFailures = false;
+            for (const [name, result] of Object.entries(jobs)) {
+              const icon = result === 'success' ? '✅' : result === 'failure' ? '❌' : '⏭️';
+              summary += `| ${name} | ${icon} ${result || 'skipped'} |\n`;
+              if (result === 'failure') hasFailures = true;
+            }
+            
+            summary += '\n## Recommendations\n\n';
+            
+            if (hasFailures) {
+              summary += '### ⚠️ Action Required\n\n';
+              summary += '1. Review the detailed scan results in each job\n';
+              summary += '2. Address any critical vulnerabilities immediately\n';
+              summary += '3. Update dependencies with known vulnerabilities\n';
+              summary += '4. Remove or rotate any exposed secrets\n';
+              summary += '5. Fix any code security issues identified by SAST\n';
+            } else {
+              summary += '### ✅ All Scans Passed\n\n';
+              summary += 'No critical security issues were detected. Continue to:\n';
+              summary += '1. Keep dependencies up to date\n';
+              summary += '2. Regularly review security scanning results\n';
+              summary += '3. Follow security best practices in development\n';
+            }
+            
+            summary += '\n## Next Scan\n\n';
+            summary += 'The next automated security scan will run at 2:00 AM UTC tomorrow.\n';
+            summary += 'You can also trigger a manual scan anytime using the workflow dispatch.\n';
+            
+            // Write summary
+            await core.summary
+              .addRaw(summary)
+              .write();
+            
+            // Create issue if critical vulnerabilities found
+            if (hasFailures && context.eventName === 'schedule') {
+              const issueTitle = `🔒 Security Alert: Vulnerabilities detected on ${new Date().toISOString().split('T')[0]}`;
+              
+              // Check if issue already exists
+              const { data: issues } = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                labels: 'security',
+                state: 'open',
+                per_page: 10
+              });
+              
+              const existingIssue = issues.find(i => i.title.includes('Security Alert') && i.title.includes(new Date().toISOString().split('T')[0]));
+              
+              if (!existingIssue) {
+                await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title: issueTitle,
+                  body: summary + `\n\n[View Full Report](${context.serverUrl}/${owner}/${repo}/actions/runs/${run_id})`,
+                  labels: ['security', 'automated']
+                });
+              }
+            }
+
+      - name: Comment on PR if present
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.issue.number;
+            
+            const comment = `## 🔒 Security Scan Results
+            
+            The automated security scan has completed. Please review any findings before merging.
+            
+            [View Full Security Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pull_number,
+              body: comment
+            });
