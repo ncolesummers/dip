@@ -17,7 +17,12 @@
       "Bash(deno fmt:*)",
       "Bash(grep:*)",
       "Bash(git add:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(gh run list:*)",
+      "Bash(deno test:*)",
+      "Bash(deno lint:*)",
+      "Bash(deno check:*)",
+      "Bash(gh issue edit:*)"
     ],
     "deny": [
       "Bash(python3 -m pytest tests/integration/test_event_flow.py -v)",

@@ -4,14 +4,7 @@
  */
 
 import { z } from "zod";
-import {
-  EventDeduplicator,
-  EventLogger,
-  EventMetricsCollector,
-  initializeEventSystem,
-  type TraceContext,
-  TypedCloudEvent,
-} from "./enhanced-base.ts";
+import { EventMetricsCollector, initializeEventSystem, TypedCloudEvent } from "./enhanced-base.ts";
 import {
   createTraceContext,
   EventBatcher,
@@ -251,7 +244,7 @@ export async function example3_BatchProcessing() {
   const batcher = new EventBatcher({
     maxSize: 5,
     maxWaitMs: 1000,
-    handler: async (events) => {
+    handler: (events) => {
       batchCount++;
       totalEventsProcessed += events.length;
 
@@ -363,7 +356,7 @@ export async function example4_EventReplay() {
     filter: (event) => {
       // Only replay user-related events
       return event.getAttribute("source").includes("user") ||
-        event.getData().hasOwnProperty("userId");
+        Object.prototype.hasOwnProperty.call(event.getData(), "userId");
     },
     onComplete: () => {
       console.log("Replay completed!");
@@ -410,7 +403,7 @@ export async function example5_EventPipeline() {
   const pipeline = new EventPipeline()
     .addStage({
       name: "validate",
-      process: async (event) => {
+      process: (event) => {
         if (!event.validate()) {
           throw new Error("Event validation failed");
         }
@@ -439,7 +432,7 @@ export async function example5_EventPipeline() {
     })
     .addStage({
       name: "route",
-      process: async (event) => {
+      process: (event) => {
         // Determine routing
         const eventType = event.getAttribute("type");
         let routingQueue = "default";
@@ -456,7 +449,7 @@ export async function example5_EventPipeline() {
     })
     .addStage({
       name: "audit",
-      process: async (event) => {
+      process: (event) => {
         // Log for audit
         const auditEntry = {
           eventId: event.getAttribute("id"),

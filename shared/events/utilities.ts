@@ -3,10 +3,8 @@
  * Provides helper functions for routing, filtering, batching, and replay
  */
 
-import { z } from "zod";
-import { EventPool, TraceContext, TypedCloudEvent } from "./enhanced-base.ts";
-import { CloudEventV1 } from "cloudevents";
-import { EventPriority, EventType, EventTypes } from "./types.ts";
+import { TraceContext, TypedCloudEvent } from "./enhanced-base.ts";
+import { EventPriority, EventType } from "./types.ts";
 
 // ============================================================================
 // EVENT FILTERING AND ROUTING
@@ -65,7 +63,7 @@ export class EventRouter {
   /**
    * Route an event to appropriate handlers
    */
-  async route(event: TypedCloudEvent): Promise<void> {
+  route(event: TypedCloudEvent): Promise<void> {
     return new Promise((resolve) => {
       this.queue.push({ event, resolve });
       this.processQueue();
@@ -75,7 +73,7 @@ export class EventRouter {
   /**
    * Process queued events
    */
-  private async processQueue(): Promise<void> {
+  private processQueue(): void {
     while (this.queue.length > 0 && this.activeHandlers < this.concurrency) {
       const item = this.queue.shift();
       if (!item) break;
@@ -705,7 +703,7 @@ export class EventPipeline {
   /**
    * Process multiple events
    */
-  async processMany(events: TypedCloudEvent[]): Promise<(TypedCloudEvent | null)[]> {
+  processMany(events: TypedCloudEvent[]): Promise<(TypedCloudEvent | null)[]> {
     return Promise.all(events.map((event) => this.process(event)));
   }
 

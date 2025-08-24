@@ -40,8 +40,8 @@ An Architecture Decision Record captures an important architectural decision mad
 - [ADR-008: Use CloudEvents Specification](./008-use-cloudevents-specification.md) - **Accepted**\
   Adopts CloudEvents v1.0 for standardized event format across services
 
-- [ADR-009: Use Apache Kafka for Message Bus](./009-use-kafka-for-messaging.md) - **Accepted**\
-  Uses Kafka as the central message broker for event streaming
+- [ADR-009: Use Apache Kafka for Message Bus](./009-use-kafka-for-messaging.md) - **Superseded**\
+  ~~Uses Kafka as the central message broker for event streaming~~ (See ADR-015)
 
 - [ADR-010: Use Zod for Runtime Validation](./010-use-zod-for-validation.md) - **Accepted**\
   Implements Zod for runtime validation with TypeScript type inference
@@ -57,6 +57,9 @@ An Architecture Decision Record captures an important architectural decision mad
 
 - [ADR-014: Use Structured JSON Logging](./014-use-structured-json-logging.md) - **Accepted**\
   Implements structured JSON logging for machine-readable logs
+
+- [ADR-015: Adopt Kafka KRaft Mode](./015-adopt-kafka-kraft-mode.md) - **Accepted**\
+  Uses Kafka in KRaft mode without ZooKeeper dependency (supersedes ADR-009)
 
 ## How to Use ADRs
 

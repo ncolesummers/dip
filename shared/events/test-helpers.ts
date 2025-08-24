@@ -14,7 +14,6 @@ import {
   EventStream,
 } from "./utilities.ts";
 import { CloudEventV1 } from "cloudevents";
-import { EventTypes } from "./types.ts";
 
 // ============================================================================
 // TEST EVENT FACTORIES
@@ -339,7 +338,7 @@ export class EventTestScenarios {
   /**
    * Test event validation scenario
    */
-  static async testValidation(): Promise<void> {
+  static testValidation(): void {
     const schema = z.object({
       message: z.string(),
       count: z.number(),
@@ -407,7 +406,7 @@ export class EventTestScenarios {
     const batcher = new EventBatcher({
       maxSize: 3,
       maxWaitMs: 100,
-      handler: async (events) => {
+      handler: (events) => {
         processedBatches.push(events);
       },
     });
@@ -465,7 +464,7 @@ export class EventTestScenarios {
     const pipeline = new EventPipeline()
       .addStage({
         name: "validate",
-        process: async (event) => {
+        process: (event) => {
           if (!event.validate()) {
             throw new Error("Validation failed");
           }
@@ -474,14 +473,14 @@ export class EventTestScenarios {
       })
       .addStage({
         name: "enrich",
-        process: async (event) => {
+        process: (event) => {
           event.addTag("processed", "true");
           return event;
         },
       })
       .addStage({
         name: "filter",
-        process: async (event) => {
+        process: (event) => {
           const data = event.getData() as any;
           if (data?.skip) {
             return null;
@@ -545,7 +544,7 @@ export class EventBenchmark {
   /**
    * Benchmark event creation
    */
-  static async benchmarkCreation(iterations: number): Promise<number> {
+  static benchmarkCreation(iterations: number): number {
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
@@ -563,7 +562,7 @@ export class EventBenchmark {
   /**
    * Benchmark event validation
    */
-  static async benchmarkValidation(iterations: number): Promise<number> {
+  static benchmarkValidation(iterations: number): number {
     const schema = z.object({
       message: z.string(),
       count: z.number(),
@@ -618,9 +617,9 @@ export class EventBenchmark {
   /**
    * Benchmark event pool
    */
-  static async benchmarkPool(
+  static benchmarkPool(
     iterations: number,
-  ): Promise<{ withPool: number; withoutPool: number }> {
+  ): { withPool: number; withoutPool: number } {
     const pool = new EventPool(100);
 
     // Without pool

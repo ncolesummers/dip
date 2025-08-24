@@ -1,0 +1,158 @@
+{
+  "name": "@dip/ingestion-service",
+  "version": "1.0.0",
+  "description": "Support ticket ingestion microservice for the DIP platform",
+  
+  "tasks": {
+    "start": "deno run --allow-all main.ts",
+    "start:dev": "deno run --allow-all --watch main.ts",
+    "start:prod": "DENO_ENV=production deno run --allow-all main.ts",
+    "test": "deno test --allow-all tests/",
+    "test:watch": "deno test --allow-all --watch tests/",
+    "test:coverage": "deno test --allow-all --coverage=coverage tests/",
+    "coverage": "deno coverage coverage --html",
+    "lint": "deno lint",
+    "fmt": "deno fmt",
+    "check": "deno check main.ts",
+    "compile": "deno compile --allow-all --output=ingestion-service main.ts",
+    "docker:build": "docker build -t dip/ingestion-service .",
+    "docker:run": "docker run -p 3001:3001 -p 9001:9001 dip/ingestion-service"
+  },
+  
+  "imports": {
+    "@std/http": "https://deno.land/std@0.208.0/http/mod.ts",
+    "@std/assert": "https://deno.land/std@0.208.0/assert/mod.ts",
+    "@std/testing": "https://deno.land/std@0.208.0/testing/mod.ts",
+    "hono": "npm:hono@^3.11.0",
+    "zod": "npm:zod@^3.22.4",
+    "nanoid": "npm:nanoid@^5.1.5",
+    "cloudevents": "npm:cloudevents@^7.0.2",
+    "kafkajs": "npm:kafkajs@^2.2.4",
+    "@events/": "../../shared/events/",
+    "@services/": "../../shared/services/",
+    "@schemas/": "../../shared/schemas/",
+    "@observability/": "../../shared/observability/"
+  },
+  
+  "exports": {
+    ".": "./main.ts",
+    "./service": "./service.ts",
+    "./handlers": "./handlers.ts",
+    "./validation": "./validation.ts"
+  },
+  
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "checkJs": false,
+    "lib": ["deno.ns", "es2022", "dom"]
+  },
+  
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "include": [
+        "ban-untagged-todo",
+        "camelcase",
+        "eqeqeq",
+        "explicit-function-return-type",
+        "no-await-in-loop",
+        "no-console",
+        "no-empty-interface",
+        "no-implicit-declare-namespace",
+        "no-non-null-assertion",
+        "no-throw-literal",
+        "prefer-ascii",
+        "prefer-const",
+        "single-var-declarator"
+      ],
+      "exclude": [
+        "no-console"
+      ]
+    },
+    "files": {
+      "include": ["**/*.ts"],
+      "exclude": ["coverage/", "node_modules/", "*.generated.ts"]
+    }
+  },
+  
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false,
+    "proseWrap": "preserve",
+    "files": {
+      "include": ["**/*.ts", "**/*.js", "**/*.json", "**/*.md"],
+      "exclude": ["coverage/", "node_modules/", "*.generated.*"]
+    }
+  },
+  
+  "test": {
+    "files": {
+      "include": ["tests/**/*.test.ts"],
+      "exclude": ["tests/**/*.bench.ts"]
+    }
+  },
+  
+  "bench": {
+    "files": {
+      "include": ["tests/**/*.bench.ts"]
+    }
+  },
+  
+  "lock": false,
+  
+  "nodeModulesDir": "none",
+  
+  "unstable": [
+    "kv",
+    "worker-options"
+  ],
+  
+  "permissions": {
+    "allow-net": [
+      "localhost",
+      "127.0.0.1",
+      "kafka",
+      "redis",
+      "postgres"
+    ],
+    "allow-env": [
+      "PORT",
+      "METRICS_PORT", 
+      "DENO_ENV",
+      "KAFKA_BROKERS",
+      "KAFKA_TOPIC_TICKET_RECEIVED",
+      "RATE_LIMIT_MAX_REQUESTS",
+      "DEDUPLICATION_ENABLED",
+      "DEDUPLICATION_TTL_MS",
+      "REQUEST_TIMEOUT_MS",
+      "MAX_CONCURRENT_REQUESTS",
+      "GRACEFUL_SHUTDOWN_TIMEOUT",
+      "ALLOWED_ORIGINS",
+      "REQUIRE_API_KEY",
+      "ENABLE_ATTACHMENTS",
+      "ENABLE_CUSTOM_FIELDS"
+    ],
+    "allow-read": [
+      ".",
+      "/tmp"
+    ],
+    "allow-write": [
+      "/tmp",
+      "./coverage"
+    ]
+  }
+}

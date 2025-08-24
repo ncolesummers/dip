@@ -1,0 +1,550 @@
+version: "3.8"
+
+# Local Development Environment for DIP (Document Intelligence Platform)
+# This compose file includes all infrastructure and microservices for local development
+# Use: docker-compose up to start all services
+# Use: docker-compose up <service-name> to start individual services
+
+services:
+  # =============================================================================
+  # INFRASTRUCTURE SERVICES
+  # =============================================================================
+  
+  # Kafka (KRaft mode - no ZooKeeper needed)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
+    container_name: dip-kafka
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-9092}:9092"
+      - "${KAFKA_EXTERNAL_PORT_2:-9094}:9094"
+      - "${KAFKA_JMX_PORT:-9101}:9101"
+    environment:
+      # KRaft mode configuration (replacing ZooKeeper)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      
+      # Listeners configuration
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://0.0.0.0:9092,OUTSIDE://0.0.0.0:9094,CONTROLLER://kafka:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092,OUTSIDE://localhost:9094'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,OUTSIDE:PLAINTEXT,CONTROLLER:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      
+      # Cluster configuration
+      CLUSTER_ID: '${KAFKA_CLUSTER_ID:-7F983492C65A4A46AF546EQk}'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      
+      # Storage and retention
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      KAFKA_COMPRESSION_TYPE: "snappy"
+      
+      # JMX for monitoring
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    entrypoint: ["/bin/bash", "-c"]
+    command: |
+      "
+      # Format storage for KRaft if not already done
+      if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+        echo 'Formatting Kafka storage for KRaft mode...'
+        kafka-storage format -t $$CLUSTER_ID -c /etc/kafka/kafka.properties
+      fi
+      # Start Kafka
+      /etc/confluent/docker/run
+      "
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: dip-postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dip_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dip_password}
+      POSTGRES_DB: ${POSTGRES_DB:-dip_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dip_user} -d ${POSTGRES_DB:-dip_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: dip-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # =============================================================================
+  # MICROSERVICES
+  # =============================================================================
+
+  # Ingestion Service - Handles document ingestion and initial processing
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.deno
+      target: development
+    container_name: dip-ingestion
+    ports:
+      - "${INGESTION_PORT:-8001}:8000"
+      - "${INGESTION_METRICS_PORT:-9001}:9090"
+    environment:
+      - DENO_ENV=development
+      - SERVICE_NAME=ingestion-service
+      - SERVICE_VERSION=${SERVICE_VERSION:-1.0.0}
+      - SERVICE_PORT=8000
+      - METRICS_PORT=9090
+      # Database
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-dip_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dip_password}
+      - POSTGRES_DB=${POSTGRES_DB:-dip_db}
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Kafka
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_CLIENT_ID=ingestion-service
+      - KAFKA_GROUP_ID=ingestion-group
+      # Topics
+      - KAFKA_TOPIC_DOCUMENTS_INGESTED=documents.ingested
+      - KAFKA_TOPIC_DOCUMENTS_FAILED=documents.failed
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+    working_dir: /app
+    command: ["deno", "run", "--allow-all", "--watch", "services/ingestion/main.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "deno", "eval", "fetch('http://localhost:8000/health').then(() => Deno.exit(0)).catch(() => Deno.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Classifier Service - AI-powered document classification
+  classifier-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.deno
+      target: development
+    container_name: dip-classifier
+    ports:
+      - "${CLASSIFIER_PORT:-8002}:8000"
+      - "${CLASSIFIER_METRICS_PORT:-9002}:9090"
+    environment:
+      - DENO_ENV=development
+      - SERVICE_NAME=classifier-service
+      - SERVICE_VERSION=${SERVICE_VERSION:-1.0.0}
+      - SERVICE_PORT=8000
+      - METRICS_PORT=9090
+      # Database
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-dip_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dip_password}
+      - POSTGRES_DB=${POSTGRES_DB:-dip_db}
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Kafka
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_CLIENT_ID=classifier-service
+      - KAFKA_GROUP_ID=classifier-group
+      # Topics
+      - KAFKA_TOPIC_DOCUMENTS_INGESTED=documents.ingested
+      - KAFKA_TOPIC_DOCUMENTS_CLASSIFIED=documents.classified
+      - KAFKA_TOPIC_CLASSIFICATION_FAILED=classification.failed
+      # AI Configuration
+      - OLLAMA_HOST=${OLLAMA_HOST:-ollama}
+      - OLLAMA_PORT=${OLLAMA_PORT:-11434}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-llama2:7b}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+    working_dir: /app
+    command: ["deno", "run", "--allow-all", "--watch", "services/classifier/main.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "deno", "eval", "fetch('http://localhost:8000/health').then(() => Deno.exit(0)).catch(() => Deno.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Routing Service - Intelligent document routing
+  routing-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.deno
+      target: development
+    container_name: dip-routing
+    ports:
+      - "${ROUTING_PORT:-8003}:8000"
+      - "${ROUTING_METRICS_PORT:-9003}:9090"
+    environment:
+      - DENO_ENV=development
+      - SERVICE_NAME=routing-service
+      - SERVICE_VERSION=${SERVICE_VERSION:-1.0.0}
+      - SERVICE_PORT=8000
+      - METRICS_PORT=9090
+      # Database
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-dip_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dip_password}
+      - POSTGRES_DB=${POSTGRES_DB:-dip_db}
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Kafka
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_CLIENT_ID=routing-service
+      - KAFKA_GROUP_ID=routing-group
+      # Topics
+      - KAFKA_TOPIC_DOCUMENTS_CLASSIFIED=documents.classified
+      - KAFKA_TOPIC_DOCUMENTS_ROUTED=documents.routed
+      - KAFKA_TOPIC_ROUTING_FAILED=routing.failed
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+    working_dir: /app
+    command: ["deno", "run", "--allow-all", "--watch", "services/routing/main.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "deno", "eval", "fetch('http://localhost:8000/health').then(() => Deno.exit(0)).catch(() => Deno.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Response Service - Final response generation and delivery
+  response-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.deno
+      target: development
+    container_name: dip-response
+    ports:
+      - "${RESPONSE_PORT:-8004}:8000"
+      - "${RESPONSE_METRICS_PORT:-9004}:9090"
+    environment:
+      - DENO_ENV=development
+      - SERVICE_NAME=response-service
+      - SERVICE_VERSION=${SERVICE_VERSION:-1.0.0}
+      - SERVICE_PORT=8000
+      - METRICS_PORT=9090
+      # Database
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-dip_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dip_password}
+      - POSTGRES_DB=${POSTGRES_DB:-dip_db}
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Kafka
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_CLIENT_ID=response-service
+      - KAFKA_GROUP_ID=response-group
+      # Topics
+      - KAFKA_TOPIC_DOCUMENTS_ROUTED=documents.routed
+      - KAFKA_TOPIC_RESPONSES_GENERATED=responses.generated
+      - KAFKA_TOPIC_RESPONSE_FAILED=response.failed
+      # AI Configuration
+      - OLLAMA_HOST=${OLLAMA_HOST:-ollama}
+      - OLLAMA_PORT=${OLLAMA_PORT:-11434}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-llama2:7b}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+    working_dir: /app
+    command: ["deno", "run", "--allow-all", "--watch", "services/response/main.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "deno", "eval", "fetch('http://localhost:8000/health').then(() => Deno.exit(0)).catch(() => Deno.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # =============================================================================
+  # MONITORING & SUPPORT SERVICES
+  # =============================================================================
+
+  # Kafka UI - Web interface for Kafka management
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: dip-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_UI_PORT:-8080}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_READONLY: "false"
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: PLAINTEXT
+      DYNAMIC_CONFIG_ENABLED: true
+    networks:
+      - frontend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dip-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    networks:
+      - backend
+    depends_on:
+      - kafka
+      - postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # Grafana - Metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dip-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: redis-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana-datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - backend
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+
+  # Ollama - Local AI model server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dip-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - backend
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  # Frontend network - for services that need external access
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
+  
+  # Backend network - for internal service communication
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/24
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  kafka-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  ollama-data:
+    driver: local

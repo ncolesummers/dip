@@ -6,7 +6,7 @@
 import { CloudEventV1, ValidationError } from "cloudevents";
 import { z } from "zod";
 import { nanoid } from "nanoid";
-import { EventPriority, EventStatus, EventTypes } from "./types.ts";
+import { Buffer } from "node:buffer";
 import { CloudEventAttributesSchema } from "./base.ts";
 import type { CloudEventAttributes } from "./base.ts";
 
@@ -95,7 +95,7 @@ export class EventDeduplicator {
     await this.kv!.set(key, Date.now(), { expireIn: this.ttlMs });
   }
 
-  async cleanup(): Promise<void> {
+  cleanup(): void {
     if (this.kv) {
       this.kv.close();
       this.kv = undefined;
@@ -167,7 +167,7 @@ export class TypedCloudEvent<T = unknown> {
   private static readonly decoder = new TextDecoder();
 
   constructor(event: CloudEventV1<T>, schema?: z.ZodSchema<T>) {
-    const startTime = performance.now();
+    const _startTime = performance.now();
 
     this.event = event;
     this.schema = schema;
@@ -700,7 +700,7 @@ export class EventMetricsCollector implements EventObserver {
     }
   }
 
-  onEventError(error: Error, event?: TypedCloudEvent<unknown>): void {
+  onEventError(_error: Error, event?: TypedCloudEvent<unknown>): void {
     const type = event ? event.getAttribute("type") : "unknown";
     this.increment(`events.errors.${type}`);
   }

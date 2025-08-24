@@ -1,0 +1,280 @@
+version: "3.8"
+
+# Development Overrides for Docker Compose
+# This file provides development-specific configurations that override the main docker-compose.yml
+# It's automatically loaded when running `docker-compose up`
+# 
+# Key Development Features:
+# - Hot reload enabled for all Deno services
+# - Enhanced logging and debugging
+# - Volume mounts for live code editing
+# - Additional development tools and ports
+# - Relaxed security for easier debugging
+
+services:
+  # =============================================================================
+  # INFRASTRUCTURE DEVELOPMENT OVERRIDES
+  # =============================================================================
+
+  kafka:
+    # Enable debug logging and additional monitoring
+    environment:
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_TOOLS_LOG4J_LOGLEVEL: INFO
+      # Development-friendly settings
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+    # Expose additional ports for debugging
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+      - "9101:9101"
+      - "9093:9093" # Controller port for debugging
+
+  postgres:
+    # Enable query logging for development
+    environment:
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    command: 
+      - "postgres"
+      - "-c"
+      - "log_statement=all"
+      - "-c"
+      - "log_destination=stderr"
+      - "-c"
+      - "log_min_duration_statement=0"
+      - "-c"
+      - "log_connections=on"
+      - "-c"
+      - "log_disconnections=on"
+
+  redis:
+    # Enable Redis slow query logging
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 256mb 
+      --maxmemory-policy allkeys-lru
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
+      --loglevel notice
+
+  # =============================================================================
+  # MICROSERVICES DEVELOPMENT OVERRIDES  
+  # =============================================================================
+
+  ingestion-service:
+    # Development environment settings
+    environment:
+      # Enhanced logging for development
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=pretty
+      # Enable Deno debugging
+      - DENO_INSPECT=0.0.0.0:9229
+      # Hot reload settings
+      - DENO_WATCH=true
+      # Development database settings
+      - DB_POOL_SIZE=5
+      - DB_CONNECTION_TIMEOUT=5000
+      # Kafka development settings
+      - KAFKA_CONSUMER_GROUP_ID=ingestion-dev-group
+      - KAFKA_SESSION_TIMEOUT=30000
+      - KAFKA_HEARTBEAT_INTERVAL=3000
+    # Enable Deno debugger port
+    ports:
+      - "8001:8000"
+      - "9001:9090"  # Metrics
+      - "9229:9229"  # Debug port
+    # Development command with hot reload and debugging
+    command: >
+      deno run 
+      --allow-all 
+      --watch 
+      --inspect=0.0.0.0:9229
+      --unstable
+      services/ingestion/main.ts
+    # Additional volume mounts for development
+    volumes:
+      - .:/app:cached
+      - /app/.deno  # Cache Deno modules
+      - deno-cache:/root/.cache/deno
+
+  classifier-service:
+    environment:
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=pretty
+      - DENO_INSPECT=0.0.0.0:9230
+      - DENO_WATCH=true
+      - DB_POOL_SIZE=5
+      - DB_CONNECTION_TIMEOUT=5000
+      - KAFKA_CONSUMER_GROUP_ID=classifier-dev-group
+      - KAFKA_SESSION_TIMEOUT=30000
+      - KAFKA_HEARTBEAT_INTERVAL=3000
+      # AI/ML development settings
+      - MODEL_CACHE_SIZE=3
+      - INFERENCE_TIMEOUT=30000
+      - BATCH_SIZE=5
+    ports:
+      - "8002:8000"
+      - "9002:9090"  # Metrics
+      - "9230:9230"  # Debug port
+    command: >
+      deno run 
+      --allow-all 
+      --watch 
+      --inspect=0.0.0.0:9230
+      --unstable
+      services/classifier/main.ts
+    volumes:
+      - .:/app:cached
+      - /app/.deno
+      - deno-cache:/root/.cache/deno
+
+  routing-service:
+    environment:
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=pretty
+      - DENO_INSPECT=0.0.0.0:9231
+      - DENO_WATCH=true
+      - DB_POOL_SIZE=5
+      - DB_CONNECTION_TIMEOUT=5000
+      - KAFKA_CONSUMER_GROUP_ID=routing-dev-group
+      - KAFKA_SESSION_TIMEOUT=30000
+      - KAFKA_HEARTBEAT_INTERVAL=3000
+      # Routing-specific development settings
+      - ROUTING_CACHE_TTL=300
+      - ROUTING_STRATEGY=round-robin
+    ports:
+      - "8003:8000"
+      - "9003:9090"  # Metrics
+      - "9231:9231"  # Debug port
+    command: >
+      deno run 
+      --allow-all 
+      --watch 
+      --inspect=0.0.0.0:9231
+      --unstable
+      services/routing/main.ts
+    volumes:
+      - .:/app:cached
+      - /app/.deno
+      - deno-cache:/root/.cache/deno
+
+  response-service:
+    environment:
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=pretty
+      - DENO_INSPECT=0.0.0.0:9232
+      - DENO_WATCH=true
+      - DB_POOL_SIZE=5
+      - DB_CONNECTION_TIMEOUT=5000
+      - KAFKA_CONSUMER_GROUP_ID=response-dev-group
+      - KAFKA_SESSION_TIMEOUT=30000
+      - KAFKA_HEARTBEAT_INTERVAL=3000
+      # Response generation development settings
+      - RESPONSE_TIMEOUT=45000
+      - MAX_RESPONSE_LENGTH=4000
+      - TEMPLATE_CACHE_SIZE=50
+    ports:
+      - "8004:8000"
+      - "9004:9090"  # Metrics
+      - "9232:9232"  # Debug port
+    command: >
+      deno run 
+      --allow-all 
+      --watch 
+      --inspect=0.0.0.0:9232
+      --unstable
+      services/response/main.ts
+    volumes:
+      - .:/app:cached
+      - /app/.deno
+      - deno-cache:/root/.cache/deno
+
+  # =============================================================================
+  # DEVELOPMENT TOOLS & UTILITIES
+  # =============================================================================
+
+  # Development database admin tool
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: dip-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@dip.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DISABLE_POSTFIX: "true"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - backend
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+
+  # Redis Commander - Redis web UI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: dip-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin
+    ports:
+      - "8081:8081"
+    networks:
+      - backend
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+
+  # Mailhog - Email testing tool
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: dip-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+
+  # Development file server for static assets
+  nginx-dev:
+    image: nginx:alpine
+    container_name: dip-nginx-dev
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx-dev.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/usr/share/nginx/html:ro
+      - ./uploads:/usr/share/nginx/html/uploads:ro
+    networks:
+      - frontend
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+
+# =============================================================================
+# ADDITIONAL DEVELOPMENT VOLUMES
+# =============================================================================
+volumes:
+  pgadmin-data:
+    driver: local
+  deno-cache:
+    driver: local

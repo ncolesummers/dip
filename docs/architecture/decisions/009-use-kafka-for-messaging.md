@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-015: Adopt Kafka KRaft Mode](./015-adopt-kafka-kraft-mode.md)
 
 ## Context
 

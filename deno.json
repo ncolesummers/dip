@@ -94,5 +94,5 @@
   },
   "unstable": ["kv", "temporal", "cron", "broadcast-channel"],
   "lock": false,
-  "nodeModulesDir": false
+  "nodeModulesDir": "none"
 }

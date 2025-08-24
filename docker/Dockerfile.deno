@@ -1,36 +1,77 @@
 # Multi-stage build for Deno services
 FROM denoland/deno:alpine-1.39.4 AS base
 
-# Install necessary tools
+# Install necessary tools for development and production
 RUN apk add --no-cache \
     curl \
     bash \
     git \
-    ca-certificates
+    ca-certificates \
+    postgresql-client \
+    redis \
+    jq \
+    netcat-openbsd
 
 # Create app directory
 WORKDIR /app
 
-# Copy dependency files
-COPY deno.json import_map.json ./
+# Create non-root user for security
+RUN addgroup -g 1001 -S deno && \
+    adduser -u 1001 -S deno -G deno
 
-# Cache dependencies
-RUN deno cache --reload import_map.json
+# Copy dependency files first for better caching
+COPY --chown=deno:deno deno.json ./
+
+# Pre-cache common dependencies to speed up development
+RUN deno cache \
+    https://deno.land/std@0.208.0/testing/mod.ts \
+    https://deno.land/std@0.208.0/assert/mod.ts \
+    https://deno.land/std@0.208.0/async/mod.ts \
+    https://deno.land/std@0.208.0/http/mod.ts \
+    https://deno.land/std@0.208.0/log/mod.ts
 
 # Development stage
 FROM base AS development
 
-# Copy all source files
-COPY . .
+# Install additional development tools
+RUN apk add --no-cache \
+    vim \
+    nano \
+    htop \
+    procps
 
-# Expose common ports
-EXPOSE 8000-8010 9090
+# Copy shared libraries and configuration first
+COPY --chown=deno:deno shared/ ./shared/
+COPY --chown=deno:deno *.json ./
+COPY --chown=deno:deno *.ts ./
 
-# Set environment to development
+# Create directories for services and cache
+RUN mkdir -p services logs temp /home/deno/.cache/deno
+
+# Set up proper permissions
+RUN chown -R deno:deno /app /home/deno/.cache
+
+# Switch to non-root user for development
+USER deno
+
+# Expose common ports for services and debugging
+EXPOSE 8000 9090 9229
+
+# Set development environment variables
 ENV DENO_ENV=development
+ENV DENO_DIR=/home/deno/.cache/deno
+ENV DENO_INSTALL_ROOT=/home/deno/.local
+ENV PATH="/home/deno/.local/bin:$PATH"
 
-# Default command (override per service)
-CMD ["deno", "run", "--allow-all", "--watch", "main.ts"]
+# Create health check script
+COPY --chown=deno:deno docker/healthcheck.ts ./docker/
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD deno run --allow-net docker/healthcheck.ts || exit 1
+
+# Default development command with hot reload and debugging
+CMD ["deno", "run", "--allow-all", "--watch", "--inspect=0.0.0.0:9229", "--unstable", "main.ts"]
 
 # Builder stage for production
 FROM base AS builder

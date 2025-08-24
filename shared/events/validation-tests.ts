@@ -583,7 +583,7 @@ Deno.test("Schema Versioning and Migration", () => {
   const v1Data = createValidTicketReceivedEvent();
 
   // Get the migration function and apply it manually since the test version registration is local
-  const v2SchemaInfo = versionedSchemas.getSchema(EventTypes.TICKET_RECEIVED, "2.0");
+  // const v2SchemaInfo = versionedSchemas.getSchema(EventTypes.TICKET_RECEIVED, "2.0"); // Not used in test
   const migration = (v1Data: any) => ({
     ...v1Data,
     processing_hints: {
